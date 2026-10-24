@@ -9,7 +9,8 @@
   <link rel="icon" href="/icons/icon.svg" type="image/svg+xml">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@600;700;800&display=swap" media="print" onload="this.media='all'">
+  <noscript><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@600;700;800&display=swap"></noscript>
   <link rel="stylesheet" href="/shared/ui.css">
 </head>
 <body class="kid">
@@ -27,7 +28,7 @@
   </form>
 
   <script type="module">
-    import { pairDevice, deviceToken } from '/shared/api.js';
+    import { pairDevice, deviceToken, clearScreenCache } from '/shared/api.js';
 
     const form = document.getElementById('pair-form');
     const input = document.getElementById('code');
@@ -45,6 +46,7 @@
       msg.textContent = '';
       try {
         const { token } = await pairDevice(input.value);
+        clearScreenCache();
         deviceToken.set(token);
         if (deviceToken.get() !== token) {
           msg.textContent = 'This browser won’t save the setup. Try turning off private browsing.';

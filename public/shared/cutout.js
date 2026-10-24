@@ -116,6 +116,8 @@ export async function makeCutout(src, { size = 768, tolerance = 34, soft = 72, p
     octx.imageSmoothingQuality = 'high';
     octx.drawImage(canvas, minX, minY, bw, bh, dx, dy, dw, dh);
   }
-  const blob = await new Promise((res) => out.toBlob(res, 'image/png'));
+  // WebP keeps transparency at a fraction of PNG's size; browsers that can't encode it give PNG.
+  let blob = await new Promise((res) => out.toBlob(res, 'image/webp', 0.9));
+  if (!blob || blob.type !== 'image/webp') blob = await new Promise((res) => out.toBlob(res, 'image/png'));
   return { blob, ok, removed, reason };
 }

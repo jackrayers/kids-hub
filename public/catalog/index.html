@@ -9,7 +9,8 @@
   <link rel="icon" href="/icons/icon.svg" type="image/svg+xml">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@600;700;800&family=Chewy&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@600;700;800&family=Chewy&display=swap" media="print" onload="this.media='all'">
+  <noscript><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@600;700;800&family=Chewy&display=swap"></noscript>
   <link rel="stylesheet" href="/shared/ui.css">
   <style>
     body.santa-app { padding-top: 0; background: var(--cream); padding-bottom: calc(150px + env(safe-area-inset-bottom)); }
@@ -196,7 +197,7 @@
   </dialog>
 
   <script type="module">
-    import { kidApi, esc, session, watchForUpdates } from '/shared/api.js';
+    import { kidApi, esc, session, store, watchForUpdates } from '/shared/api.js';
     watchForUpdates();
     import { setWordmark, snow } from '/shared/whimsy.js';
 
@@ -340,13 +341,22 @@
     $('big-close').addEventListener('click', () => $('big').close());
     $('big').addEventListener('click', (e) => { if (e.target === $('big')) $('big').close(); });
 
+    // Draw straight away from the last visit, then refresh from the server.
+    const cacheKey = `kh.cache.catalog.${kidId}`;
+    let shownFromCache = false;
+    try {
+      const cached = JSON.parse(store.get(cacheKey) || 'null');
+      if (cached?.toys) { data = cached; renderAll(); shownFromCache = true; }
+    } catch { /* ignore */ }
+
     (async () => {
       try {
         data = await kidApi(`/catalog?kid=${encodeURIComponent(kidId)}`);
+        store.set(cacheKey, JSON.stringify(data));
         session.set('kh.kidId', kidId);
         renderAll();
       } catch (err) {
-        $('toys').innerHTML = `<p class="empty">${esc(err.message)}</p>`;
+        if (!shownFromCache) $('toys').innerHTML = `<p class="empty">${esc(err.message)}</p>`;
       }
     })();
   </script>

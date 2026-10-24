@@ -43,6 +43,16 @@ async function request(path, { method = 'GET', body, headers = {} } = {}) {
   return data;
 }
 
+/** Forgets the last-visit copies of kid screens (used when a tablet is unpaired or re-paired). */
+export function clearScreenCache() {
+  try {
+    for (let i = localStorage.length - 1; i >= 0; i--) {
+      const k = localStorage.key(i);
+      if (k && k.startsWith('kh.cache.')) localStorage.removeItem(k);
+    }
+  } catch { /* storage unavailable */ }
+}
+
 /** Calls /api/kid/* as the paired device. Unpaired → bounce to /pair/. */
 export async function kidApi(path, opts = {}) {
   const token = deviceToken.get();
@@ -50,7 +60,7 @@ export async function kidApi(path, opts = {}) {
   try {
     return await request(`/api/kid${path}`, { ...opts, headers: { Authorization: `Bearer ${token}` } });
   } catch (err) {
-    if (err.status === 401) { deviceToken.clear(); location.href = '/pair/'; }
+    if (err.status === 401) { deviceToken.clear(); clearScreenCache(); location.href = '/pair/'; }
     throw err;
   }
 }
