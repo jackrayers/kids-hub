@@ -79,7 +79,7 @@ Kids never log in; a paired device shows its household's kids. A tablet can inst
 
 ## Santa letter
 - Kid’s wish list → letter page: "Dear Santa", traced name, grid of coloring pictures only (≤6, no titles), holly corners.
-- Print CSS (`@page` Letter, portrait), print via OS share/AirPrint. No storage needed initially.
+- **Print my letter** draws the letter on a 200 dpi canvas and saves it as a true US Letter PDF (`public/letter/pdf.js`, jsPDF vendored in `public/vendor/`), then opens the share sheet → Print. Browsers scale printed web pages unpredictably; PDFs print true to size. The on-screen page is just the preview.
 
 ## Print Shop
 - Model has 1–5 color slots (MMU3). Kid picks a filament per slot from `in_stock` swatches.

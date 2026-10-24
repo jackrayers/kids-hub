@@ -85,7 +85,7 @@
     <span class="grow"></span>
     <button class="print-btn" id="print" type="button">🖨️ Print my letter</button>
   </div>
-  <p class="hint">Grown-ups: if Print doesn’t open, use the Share button → Print.</p>
+  <p class="hint">Grown-ups: this makes a US Letter PDF — choose <strong>Print</strong> in the share sheet and leave scale at 100%.</p>
 
   <article class="paper" id="paper" aria-label="Letter to Santa">
     <svg class="corner tl" viewBox="-8 -8 136 136" aria-hidden="true"><use href="#holly"/></svg>
@@ -102,6 +102,7 @@
 
   <script type="module">
     import { kidApi, esc, session, watchForUpdates } from '/shared/api.js';
+    import { buildLetterPdf, shareOrOpenPdf } from '/letter/pdf.js';
     watchForUpdates();
 
     const $ = (id) => document.getElementById(id);
@@ -109,7 +110,26 @@
     if (!kidId) location.href = '/';
     $('back').href = `/catalog/?kid=${encodeURIComponent(kidId)}`;
 
-    $('print').addEventListener('click', () => window.print());
+    let letter = null; // { name, toys } once loaded
+
+    // Print from a real US Letter PDF: browsers scale web pages differently, PDFs print true to size.
+    $('print').addEventListener('click', async () => {
+      if (!letter) return;
+      const btn = $('print');
+      const label = btn.textContent;
+      btn.disabled = true;
+      btn.textContent = '✨ Making your letter…';
+      try {
+        const pdf = await buildLetterPdf(letter);
+        await shareOrOpenPdf(pdf, `${letter.name} letter to Santa.pdf`);
+      } catch (err) {
+        console.error(err);
+        window.print(); // last resort
+      } finally {
+        btn.disabled = false;
+        btn.textContent = label;
+      }
+    });
 
     (async () => {
       try {
@@ -123,6 +143,7 @@
           ? toys.map((t) => `<div class="want"><img src="${esc(t.coloring)}" alt="${esc(t.title)}"></div>`).join('')
           : '<p style="text-align:center;font-size:3cqw;color:#888">Pick some toys in the catalog first!</p>';
         document.title = `${data.kid.name}’s Letter to Santa`;
+        letter = { name: data.kid.name, toys };
       } catch (err) {
         $('wants').innerHTML = `<p>${esc(err.message)}</p>`;
       }
