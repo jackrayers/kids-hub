@@ -77,6 +77,9 @@ Kids never log in; a paired device shows its household's kids. A tablet can inst
 ## Shopping list
 - Parent mode → Shopping: each kid's wishes with Buy links (the product page, or a link added later), **Mark bought** shared across all grown-ups, filter to still-to-buy. Kid endpoints never return bought status.
 
+## Catalog book view
+- `public/catalog/book/`: the same catalog as a picture book — cover ("Made for <kid>"), contents (tap to jump), then each category on themed pages (8 background themes, banner on its first page) with 1–4 toys per page in varied layouts, and an end page with the letter button. Two-page spreads when there's room (iPad landscape), single pages otherwise. Pages turn by dragging, tapping the outer edge, arrows or keyboard (CSS 3D leaf). Hearts, tray and big view work as on the shelves. The last view used (book or shelves) is remembered per tablet (`kh.catalogView`).
+
 ## Santa letter
 - Kid’s wish list → letter page: "Dear Santa", traced name, grid of coloring pictures only (≤6, no titles), holly corners.
 - **Print my letter** draws the letter on a 200 dpi canvas and saves it as a true US Letter PDF (`public/letter/pdf.js`, jsPDF vendored in `public/vendor/`), then opens the share sheet → Print. Browsers scale printed web pages unpredictably; PDFs print true to size. The on-screen page is just the preview.

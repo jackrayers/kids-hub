@@ -31,9 +31,16 @@
       flex: 1; min-width: 0; margin: 46px 0 0; font-size: clamp(2.3rem, 8vw, 4.6rem); --wm-outline: #0f3d29;
     }
     .shop-row .back-btn { text-decoration: none; }
+    .book-btn {
+      flex: none; text-decoration: none; display: inline-flex; gap: 8px; align-items: center; margin-top: 40px;
+      border-radius: 999px; padding: 10px 18px 7px; background: #fff8eb; color: var(--ink);
+      font: 800 1.25rem/1 var(--font-fun); box-shadow: 0 4px 0 rgba(0, 0, 0, 0.25);
+    }
+    .book-btn span { display: inline; }
     @media (max-width: 560px) {
       .shop-row { flex-wrap: wrap; justify-content: center; }
       .shop-row .back-btn { position: absolute; left: 16px; top: 2px; padding: 6px 14px; font-size: 1rem; }
+      .book-btn { position: absolute; right: 16px; top: 2px; margin: 0; padding: 6px 14px 4px; font-size: 1rem; }
       .shop-row h1 { flex-basis: 100%; margin-top: 54px; }
       .sleigh { width: 96px; top: calc(env(safe-area-inset-top) + 50px); }
       .tray .slot { width: 56px; height: 56px; border-radius: 14px; }
@@ -168,6 +175,7 @@
     <div class="shop-row">
       <a class="back-btn" href="/">↩ Back</a>
       <h1 class="wordmark" id="title">Santa’s Catalog</h1>
+      <a class="book-btn" id="book-btn" href="#" aria-label="Read it like a book">📖 <span>Book</span></a>
     </div>
 
     <svg class="edge" viewBox="0 0 1200 70" preserveAspectRatio="none" aria-hidden="true">
@@ -208,6 +216,11 @@
     const $ = (id) => document.getElementById(id);
     const kidId = new URLSearchParams(location.search).get('kid') || session.get('kh.kidId');
     if (!kidId) location.href = '/';
+    // Kids who last used the book view go straight back to it.
+    const bookUrl = `/catalog/book/?kid=${encodeURIComponent(kidId)}`;
+    if (new URLSearchParams(location.search).get('view') !== 'shelves' && store.get('kh.catalogView') === 'book') location.replace(bookUrl);
+    else store.set('kh.catalogView', 'shelves');
+    document.getElementById('book-btn').href = bookUrl;
 
     let data = { toys: [], categories: [], wishlist: [], wishlist_max: 6 };
     let filter = 'all';
