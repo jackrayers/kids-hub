@@ -12,6 +12,8 @@ function loadImage(src) {
   });
 }
 
+import { kuwahara } from './storybook.js';
+
 const idle = () => new Promise((r) => setTimeout(r, 0));
 
 export async function makeLineArt(src, { size = 768, detail = 0.8 } = {}) {
@@ -22,7 +24,12 @@ export async function makeLineArt(src, { size = 768, detail = 0.8 } = {}) {
   const scale = Math.min(size / img.naturalWidth, size / img.naturalHeight) * 0.96;
   const dw = img.naturalWidth * scale; const dh = img.naturalHeight * scale;
   ctx.drawImage(img, (size - dw) / 2, (size - dh) / 2, dw, dh);
-  const { data } = ctx.getImageData(0, 0, size, size);
+  // Smooth away photo texture (fur, fabric, reflections) first so only real shapes become lines.
+  let data = ctx.getImageData(0, 0, size, size).data;
+  data = kuwahara(data, size, size, Math.round(size / 160));
+  await idle();
+  data = kuwahara(data, size, size, Math.round(size / 320));
+  await idle();
   const n = size * size;
 
   // Luminance (transparent → white) and a solid/empty mask from alpha.
@@ -84,17 +91,31 @@ export async function makeLineArt(src, { size = 768, detail = 0.8 } = {}) {
     }
   }
 
-  // Drop lone specks, then thicken lines a touch.
+  // Drop specks: inner line pieces smaller than a short stroke go; the outline always stays.
   const clean = new Uint8Array(n);
-  for (let y = 1; y < size - 1; y++) {
-    for (let x = 1; x < size - 1; x++) {
-      const p = y * size + x;
-      if (!line[p]) continue;
-      let nb = 0;
-      for (let dy = -1; dy <= 1; dy++) for (let dx = -1; dx <= 1; dx++) if ((dx || dy) && line[p + dy * size + dx]) nb++;
-      if (nb >= 2 || line[p] === 2) clean[p] = 1;
+  const seen = new Uint8Array(n);
+  const minPiece = Math.round(size * 0.05);
+  const stack = []; const piece = [];
+  for (let p0 = 0; p0 < n; p0++) {
+    if (line[p0] !== 1 || seen[p0]) continue;
+    stack.length = 0; piece.length = 0;
+    stack.push(p0); seen[p0] = 1;
+    let touchesOutline = false;
+    while (stack.length) {
+      const p = stack.pop(); piece.push(p);
+      const x = p % size; const y = (p - x) / size;
+      for (let dy = -1; dy <= 1; dy++) for (let dx = -1; dx <= 1; dx++) {
+        const nx = x + dx; const ny = y + dy;
+        if ((!dx && !dy) || nx < 0 || ny < 0 || nx >= size || ny >= size) continue;
+        const q = ny * size + nx;
+        if (line[q] === 2) touchesOutline = true;
+        if (line[q] === 1 && !seen[q]) { seen[q] = 1; stack.push(q); }
+      }
     }
+    if (piece.length >= minPiece || (touchesOutline && piece.length >= minPiece / 3)) for (const p of piece) clean[p] = 1;
   }
+  for (let p = 0; p < n; p++) if (line[p] === 2) clean[p] = 1;
+  await idle();
   const out = ctx.createImageData(size, size);
   for (let y = 0; y < size; y++) {
     for (let x = 0; x < size; x++) {

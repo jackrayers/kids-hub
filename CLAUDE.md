@@ -27,4 +27,4 @@ npm run dev                            # http://localhost:8788
 - Prompts and categories live in `lib/catalog.js`; generation in `lib/gemini.js` (tries AI Studio, then Vertex express).
 - Coloring pages are generated *from the storybook picture*, so redoing the storybook means redoing the cutout and coloring too.
 - Gemini can’t output real transparency: the storybook prompt asks for flat pure white, and `public/shared/cutout.js` removes it in the browser.
-- Gemini refuses well-known characters/brands (e.g. Mickey). Don't work around the filter; the fallback is the product photo (`use-photo`) + browser cutout + `public/shared/lineart.js` coloring page.
+- Gemini refuses well-known characters/brands (e.g. Mickey). Don't work around the filter; the fallback is the product photo (`use-photo`) + browser cutout + `public/shared/lineart.js` coloring page + `public/shared/storybook.js` paint-style filter (Kuwahara smoothing, soft colours, pooled edges, paper grain). Both are filters over the real photo, not redrawing.

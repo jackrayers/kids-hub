@@ -127,6 +127,7 @@
     import { adminApi, avatarHtml, esc, watchForUpdates } from '/shared/api.js';
     import { makeCutout } from '/shared/cutout.js';
     import { makeLineArt } from '/shared/lineart.js';
+    import { makeStorybook } from '/shared/storybook.js';
     import { trimToSquare } from '/shared/trim.js';
     import { FINISHES, finishOf, secondColor, swatchBackground } from '/shared/finishes.js';
     watchForUpdates();
@@ -516,6 +517,14 @@
             const src = toy?.cutout || toy?.image;
             if (!src) throw new Error('Needs a picture first');
             await adminApi(`/toys/${toyId}/coloring`, { method: 'POST', body: await makeLineArt(src) });
+          } else if (step === 'storybook') {
+            await loadCatalog();
+            const toy = catalog.toys.find((t) => t.id === toyId);
+            if (!toy?.cutout) {
+              if (steps.length > 1) continue; // photo couldn't be cut out cleanly; leave it for a look
+              throw new Error('Cut it out first, then add the storybook look');
+            }
+            await uploadCutout(toyId, await makeStorybook(toy.cutout));
           } else if (step === 'trim-coloring') {
             await loadCatalog();
             const toy = catalog.toys.find((t) => t.id === toyId);
@@ -541,7 +550,7 @@
       if (state.tab === 'catalog') renderCatalog(false);
     }
 
-    const STEP_LABEL = { stylized: 'Painting…', 'use-photo': 'Copying…', cutout: 'Cutting out…', coloring: 'Drawing…', lineart: 'Drawing…', 'trim-coloring': 'Trimming…' };
+    const STEP_LABEL = { storybook: 'Painting…', stylized: 'Painting…', 'use-photo': 'Copying…', cutout: 'Cutting out…', coloring: 'Drawing…', lineart: 'Drawing…', 'trim-coloring': 'Trimming…' };
     // Gemini refuses some toys (well-known characters and brands): offer the product photo instead.
     const isBlocked = (msg) => /prohibited|blocked|safety|recitation|didn’t return an image/i.test(msg || '');
     const thumb = (src, label, { busy, checker, big } = {}) => `
@@ -565,7 +574,7 @@
         <li class="toy-row" data-id="${esc(t.id)}">
           <div class="thumbs">
             ${thumb(t.source_image, 'Photo')}
-            ${thumb(t.cutout || t.image, 'Storybook', { busy: ['stylized', 'use-photo', 'cutout'].includes(busy) && STEP_LABEL[busy], checker: !!t.cutout })}
+            ${thumb(t.cutout || t.image, 'Storybook', { busy: ['stylized', 'use-photo', 'cutout', 'storybook'].includes(busy) && STEP_LABEL[busy], checker: !!t.cutout })}
             ${thumb(t.coloring, 'Coloring', { busy: ['coloring', 'lineart', 'trim-coloring'].includes(busy) && STEP_LABEL[busy] })}
           </div>
           <div class="toy-row-main">
@@ -585,6 +594,7 @@
               ${t.image ? `<button class="btn small" data-act="redo-cutout" ${busy ? 'disabled' : ''}>Redo cutout</button>` : ''}
               ${t.image ? `<button class="btn small" data-act="redo-coloring" ${busy ? 'disabled' : ''}>Redo coloring</button>` : ''}
               ${t.image ? `<button class="btn small" data-act="lineart" ${busy ? 'disabled' : ''} title="Make the coloring page here instead of with Gemini">Simple coloring</button>` : ''}
+              ${t.cutout ? `<button class="btn small" data-act="storybook" ${busy ? 'disabled' : ''} title="Paint-style filter for product photos. Redo cutout undoes it.">Storybook look</button>` : ''}
               <span style="flex:1"></span>
               <button class="btn small danger" data-act="delete">Delete</button>
               <button class="btn small primary" data-act="approve" ${t.image && t.coloring && !busy ? '' : 'disabled'}>Approve</button>
@@ -749,7 +759,8 @@
         if (act === 'redo-stylized') makePictures(id);
         if (act === 'redo-cutout') makePictures(id, ['cutout']);
         if (act === 'redo-coloring') makePictures(id, ['coloring', 'trim-coloring']);
-        if (act === 'use-photo') makePictures(id, ['use-photo', 'cutout', 'lineart']);
+        if (act === 'use-photo') makePictures(id, ['use-photo', 'cutout', 'lineart', 'storybook']);
+        if (act === 'storybook') makePictures(id, ['storybook']);
         if (act === 'lineart') makePictures(id, ['lineart']);
         if (act === 'use-cutout') run(async () => {
           await uploadCutout(id, cutoutIssues.get(id).blob);
