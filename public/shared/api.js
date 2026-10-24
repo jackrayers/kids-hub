@@ -78,3 +78,22 @@ export function avatarHtml(kid, extraClass = '') {
 export function registerServiceWorker() {
   if ('serviceWorker' in navigator) navigator.serviceWorker.register('/sw.js').catch(() => {});
 }
+
+/**
+ * Reloads the page when a new version has been deployed. Home-screen apps on
+ * iPad keep pages alive for days, so check on open, on wake, and every 10 minutes.
+ */
+export function watchForUpdates() {
+  let loaded = null;
+  const check = async () => {
+    try {
+      const res = await fetch('/api/version', { cache: 'no-store' });
+      const { version } = await res.json();
+      if (loaded === null) loaded = version;
+      else if (version !== loaded) location.reload();
+    } catch { /* offline: try again later */ }
+  };
+  check();
+  document.addEventListener('visibilitychange', () => { if (!document.hidden) check(); });
+  setInterval(check, 10 * 60 * 1000);
+}

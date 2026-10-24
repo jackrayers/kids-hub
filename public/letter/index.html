@@ -103,7 +103,8 @@
   </article>
 
   <script type="module">
-    import { kidApi, esc, session } from '/shared/api.js';
+    import { kidApi, esc, session, watchForUpdates } from '/shared/api.js';
+    watchForUpdates();
 
     const $ = (id) => document.getElementById(id);
     const kidId = new URLSearchParams(location.search).get('kid') || session.get('kh.kidId');

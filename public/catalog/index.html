@@ -34,7 +34,10 @@
       .shop-row { flex-wrap: wrap; justify-content: center; }
       .shop-row .back-btn { position: absolute; left: 16px; top: 2px; padding: 6px 14px; font-size: 1rem; }
       .shop-row h1 { flex-basis: 100%; margin-top: 54px; }
-      .sleigh { width: 110px; top: calc(env(safe-area-inset-top) + 58px); }
+      .sleigh { width: 96px; top: calc(env(safe-area-inset-top) + 50px); }
+      .tray .slot { width: 56px; height: 56px; border-radius: 14px; }
+      .tray .letter-btn { padding: 12px 16px 8px; font-size: 1.2rem; }
+      .tray .tray-in { gap: 10px; }
     }
     .sleigh { top: calc(env(safe-area-inset-top) + 66px); width: 140px; z-index: 1; opacity: 0.9; }
     .shop .edge { margin-top: 2px; height: 60px; }
@@ -151,7 +154,8 @@
   </dialog>
 
   <script type="module">
-    import { kidApi, esc, session } from '/shared/api.js';
+    import { kidApi, esc, session, watchForUpdates } from '/shared/api.js';
+    watchForUpdates();
     import { setWordmark, snow } from '/shared/whimsy.js';
 
     setWordmark(document.getElementById('title'), 'Santa’s Catalog',

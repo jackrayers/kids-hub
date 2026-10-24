@@ -1,0 +1,5 @@
+# Always revalidate app files so tablets pick up new deploys straight away.
+/*
+  Cache-Control: no-cache
+/icons/*
+  Cache-Control: public, max-age=86400

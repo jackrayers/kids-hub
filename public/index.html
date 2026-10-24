@@ -103,7 +103,8 @@
   <a class="grownup-link" href="/admin/" aria-label="Grown-ups">⚙︎</a>
 
   <script type="module">
-    import { kidApi, avatarHtml, esc, session, registerServiceWorker } from '/shared/api.js';
+    import { kidApi, avatarHtml, esc, session, registerServiceWorker, watchForUpdates } from '/shared/api.js';
+    watchForUpdates();
     import { setWordmark } from '/shared/whimsy.js';
 
     const $ = (id) => document.getElementById(id);

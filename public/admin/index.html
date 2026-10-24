@@ -68,7 +68,8 @@
   </dialog>
 
   <script type="module">
-    import { adminApi, avatarHtml, esc } from '/shared/api.js';
+    import { adminApi, avatarHtml, esc, watchForUpdates } from '/shared/api.js';
+    watchForUpdates();
 
     const $ = (sel, root = document) => root.querySelector(sel);
     const main = $('#main');

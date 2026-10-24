@@ -363,9 +363,11 @@ dialog .avatar { --size: 84px; margin: 0 auto; }
   font-family: 'Chewy', 'Baloo 2', ui-rounded, system-ui, sans-serif;
   font-weight: 400;
   display: block; text-align: center; text-wrap: balance;
-  letter-spacing: 0.01em; line-height: 1.08; word-spacing: 0.12em;
+  letter-spacing: 0.01em; line-height: 1.08;
 }
+/* The margin keeps a visible gap even where whitespace collapses. */
 .wordmark .word { display: inline-block; white-space: nowrap; }
+.wordmark .word:not(:last-child) { margin-right: 0.22em; }
 .wordmark .ch {
   display: inline-block; position: relative;
   text-shadow:
