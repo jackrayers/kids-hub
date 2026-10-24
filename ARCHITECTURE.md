@@ -36,13 +36,13 @@ wrangler.toml
 | Kid devices | Adult creates a pairing code (10 min) → device POSTs to `/api/pair` → gets long-lived token (stored hashed server-side, localStorage on device) → `Authorization: Bearer` | `/api/kid/*` |
 | Home Assistant | Per-integration API key (hashed), scoped | `/api/hook/*` |
 
-Kids never log in; a paired device shows its household's kids.
+Kids never log in; a paired device shows its household's kids. A tablet can instead be locked to one kid (`devices.kid_id`): it skips the picker, and kid endpoints refuse any other kid.
 
 ## D1 schema (initial)
 - `households(id, name)`
 - `adults(email PK, name, role 'owner'|'adult')`
 - `kids(id, household_id, name, birth_year, avatar_key, ui_mode, active)`
-- `devices(id, household_id, name, token_hash, created_at, last_seen, revoked_at)`
+- `devices(id, household_id, kid_id?, name, token_hash, created_at, last_seen, revoked_at)`
 - `pairing_codes(code PK, household_id, expires_at)`
 - `api_keys(id, name, key_hash, scopes)`
 - `kid_apps(kid_id, app, enabled)` — per-kid app switches; missing row = app default from `lib/apps.js`

@@ -14,7 +14,7 @@
   <style>
     /* Screen: a toolbar above a paper preview. Print: just the paper, US Letter. */
     @page { size: letter portrait; margin: 0.4in; }
-    body.letter-app { background: #2e9b6a; padding-bottom: calc(30px + env(safe-area-inset-bottom)); }
+    body.letter-app { background: radial-gradient(circle, rgba(255, 255, 255, 0.12) 2px, transparent 3px) 0 0 / 30px 30px, #2e9b6a; padding-top: 0; padding-bottom: calc(30px + env(safe-area-inset-bottom)); }
     .toolbar { display: flex; flex-wrap: wrap; align-items: center; gap: 12px; max-width: 8.5in; margin: 0 auto 18px; }
     .toolbar .grow { flex: 1; }
     .print-btn {
@@ -31,7 +31,15 @@
       font-family: var(--font-fun);
       container-type: inline-size;
       overflow: hidden;
+      position: relative;
     }
+    /* Holly corners in outline so kids can colour them in. */
+    .corner { position: absolute; width: 17%; height: auto; pointer-events: none; }
+    .corner.tl { top: 1.2%; left: 1.2%; }
+    .corner.tr { top: 1.2%; right: 1.2%; transform: scaleX(-1); }
+    .corner.bl { bottom: 1.2%; left: 1.2%; transform: scaleY(-1); }
+    .corner.br { bottom: 1.2%; right: 1.2%; transform: scale(-1, -1); }
+    .toolbar-lights { height: 46px; margin: 0 -20px 10px; }
     .dear { font: 700 9cqw/1 'Mountains of Christmas', var(--font-fun); text-align: center; margin: 0; }
     .line { display: flex; align-items: baseline; gap: 2cqw; font-size: 3.4cqw; font-weight: 700; }
     .line .fill { flex: 1; border-bottom: 0.35cqw dashed #999; min-height: 1.4em; }
@@ -50,16 +58,29 @@
     .sign { display: flex; justify-content: flex-end; align-items: baseline; gap: 2cqw; font-size: 3.6cqw; font-weight: 700; }
     .sign .trace { font-size: 6cqw; }
     .deco { display: flex; justify-content: center; gap: 3cqw; font-size: 4cqw; filter: grayscale(1); opacity: 0.55; }
+    .dear { position: relative; z-index: 1; }
 
     @media print {
       body.letter-app { background: #fff; padding: 0; }
-      .toolbar, .hint { display: none !important; }
+      .toolbar, .hint, .toolbar-lights { display: none !important; }
       .paper { box-shadow: none; border-radius: 0; width: 7.7in; height: 10.1in; aspect-ratio: auto; padding: 0.25in 0.35in; margin: 0; }
       .deco { opacity: 0.4; }
     }
   </style>
 </head>
 <body class="kid letter-app">
+  <svg width="0" height="0" style="position:absolute" aria-hidden="true">
+    <defs>
+      <g id="holly" fill="#fff" stroke="#222" stroke-width="3" stroke-linejoin="round" stroke-linecap="round">
+        <g transform="translate(52 50) rotate(-160)"><path d="M0 0 Q5.0 -1.9 10 -8.3 Q16.0 -5.5 22 -15.3 Q28.0 -7.6 34 -16.8 Q40.0 -6.9 46 -12.3 Q54.0 -3.0 62 0 Q54.0 3.0 46 12.3 Q40.0 6.9 34 16.8 Q28.0 7.6 22 15.3 Q16.0 5.5 10 8.3 Q5.0 1.9 0 0 Z"/><path d="M4 0 H56" fill="none" stroke-width="2"/></g>
+        <g transform="translate(52 50) rotate(-70)"><path d="M0 0 Q5.0 -1.9 10 -8.3 Q16.0 -5.5 22 -15.3 Q28.0 -7.6 34 -16.8 Q40.0 -6.9 46 -12.3 Q54.0 -3.0 62 0 Q54.0 3.0 46 12.3 Q40.0 6.9 34 16.8 Q28.0 7.6 22 15.3 Q16.0 5.5 10 8.3 Q5.0 1.9 0 0 Z"/><path d="M4 0 H56" fill="none" stroke-width="2"/></g>
+        <circle cx="56" cy="56" r="9"/><circle cx="71" cy="60" r="8"/><circle cx="61" cy="71" r="8"/>
+        <path d="M18 102 l4 -10 l4 10 l-10 -6 h12 z" stroke-width="2.5"/>
+        <path d="M100 18 l4 -10 l4 10 l-10 -6 h12 z" stroke-width="2.5"/>
+      </g>
+    </defs>
+  </svg>
+  <div class="lights toolbar-lights" aria-hidden="true"></div>
   <div class="toolbar">
     <a class="back-btn" id="back" href="/catalog/" style="text-decoration:none">↩ Catalog</a>
     <span class="grow"></span>
@@ -68,6 +89,10 @@
   <p class="hint">Grown-ups: if Print doesn’t open, use the Share button → Print.</p>
 
   <article class="paper" id="paper" aria-label="Letter to Santa">
+    <svg class="corner tl" viewBox="0 0 120 120" aria-hidden="true"><use href="#holly"/></svg>
+    <svg class="corner tr" viewBox="0 0 120 120" aria-hidden="true"><use href="#holly"/></svg>
+    <svg class="corner bl" viewBox="0 0 120 120" aria-hidden="true"><use href="#holly"/></svg>
+    <svg class="corner br" viewBox="0 0 120 120" aria-hidden="true"><use href="#holly"/></svg>
     <h1 class="dear">Dear Santa,</h1>
     <div class="line"><span>My name is</span> <span class="trace" id="name"></span></div>
     <div class="line"><span>This year I have been</span> <span class="fill"></span></div>

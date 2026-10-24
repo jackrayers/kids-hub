@@ -8,9 +8,10 @@ export async function onRequestGet({ env, data }) {
   const { device } = data;
   const household = await env.DB.prepare('SELECT id, name FROM households WHERE id = ?')
     .bind(device.household_id).first();
-  const kids = await listKids(env.DB, { householdId: device.household_id });
+  let kids = await listKids(env.DB, { householdId: device.household_id });
+  if (device.kid_id) kids = kids.filter((k) => k.id === device.kid_id); // tablet locked to one kid
   return json({
-    device: { id: device.id, name: device.name },
+    device: { id: device.id, name: device.name, kid_id: device.kid_id || null },
     household,
     apps: APPS.map(({ id, name, sub, icon, theme, path, ready }) => ({ id, name, sub, icon, theme, path, ready })),
     kids: kids.map(({ id, name, emoji, color, avatar_url, ui_mode, balance, apps }) =>

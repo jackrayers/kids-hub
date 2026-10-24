@@ -357,3 +357,56 @@ dialog .avatar { --size: 84px; margin: 0 auto; }
 .toy-tile img { width: 100%; aspect-ratio: 1; object-fit: cover; border-radius: 12px; border: 1px solid var(--line); }
 .toy-tile-name { font-weight: 600; font-size: 0.9rem; line-height: 1.25; }
 .btn:disabled { opacity: 0.5; cursor: default; }
+
+/* ---------- Whimsy: decorations for kid screens ---------- */
+.wordmark {
+  font-family: 'Chewy', 'Baloo 2', ui-rounded, system-ui, sans-serif;
+  font-weight: 400;
+  display: inline-flex; flex-wrap: wrap; justify-content: center; align-items: baseline;
+  letter-spacing: 0.01em; line-height: 1;
+}
+.wordmark .ch {
+  display: inline-block; position: relative;
+  text-shadow:
+    3px 0 0 var(--wm-outline, #fff), -3px 0 0 var(--wm-outline, #fff), 0 3px 0 var(--wm-outline, #fff), 0 -3px 0 var(--wm-outline, #fff),
+    2px 2px 0 var(--wm-outline, #fff), -2px 2px 0 var(--wm-outline, #fff), 2px -2px 0 var(--wm-outline, #fff), -2px -2px 0 var(--wm-outline, #fff),
+    0 7px 0 rgba(43, 33, 64, 0.18);
+  animation: bob 3.2s ease-in-out infinite;
+  animation-delay: calc(var(--i) * -0.22s);
+}
+.wordmark .sp { width: 0.32em; }
+.wordmark .hat::before {
+  content: ''; position: absolute; left: -0.08em; top: -0.4em; width: 0.66em; height: 0.53em;
+  background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 80'%3E%3Cpath d='M12 62 C20 30 44 6 70 10 C84 12 92 30 90 46 C80 36 70 34 60 38 C50 44 40 56 36 62 Z' fill='%23e4483f' stroke='%238f1f1a' stroke-width='3'/%3E%3Crect x='6' y='56' width='60' height='18' rx='9' fill='white' stroke='%23d8d0c4' stroke-width='2'/%3E%3Ccircle cx='90' cy='50' r='10' fill='white' stroke='%23d8d0c4' stroke-width='2'/%3E%3C/svg%3E") center / contain no-repeat; transform: rotate(-14deg);
+}
+@keyframes bob { 0%, 100% { transform: translateY(0) rotate(var(--r)); } 50% { transform: translateY(-0.06em) rotate(calc(var(--r) * -1)); } }
+
+.bunting { height: 64px; background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='240' height='64' viewBox='0 0 240 64'%3E%3Cpath d='M0 6 Q120 34 240 6' fill='none' stroke='%232b2140' stroke-width='2.5'/%3E%3Cpath d='M12 12 L48 12 L30 50 Z' fill='%23e4483f'/%3E%3Ccircle cx='30' cy='24' r='4' fill='white' opacity='.55'/%3E%3Cpath d='M72 19 L108 19 L90 57 Z' fill='%23f5b82e'/%3E%3Ccircle cx='90' cy='31' r='4' fill='white' opacity='.55'/%3E%3Cpath d='M132 19 L168 19 L150 57 Z' fill='%234f8fe8'/%3E%3Ccircle cx='150' cy='31' r='4' fill='white' opacity='.55'/%3E%3Cpath d='M192 12 L228 12 L210 50 Z' fill='%232e9b6a'/%3E%3Ccircle cx='210' cy='24' r='4' fill='white' opacity='.55'/%3E%3C/svg%3E") 0 0 / 240px 64px repeat-x; }
+.lights { height: 46px; background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='240' height='46' viewBox='0 0 240 46'%3E%3Cpath d='M0 5 Q30 20 60 5 T120 5 T180 5 T240 5' fill='none' stroke='%231d3b2a' stroke-width='2.5'/%3E%3Crect x='26' y='11.5' width='8' height='7' rx='2' fill='%231d3b2a'/%3E%3Cellipse cx='30' cy='27.5' rx='7' ry='10' fill='%23ff5a4f'%3E%3Canimate attributeName='opacity' values='1;.45;1' dur='1.6s' begin='0.0s' repeatCount='indefinite'/%3E%3C/ellipse%3E%3Cellipse cx='27.5' cy='23.5' rx='2' ry='3.5' fill='white' opacity='.6'/%3E%3Crect x='86' y='11.5' width='8' height='7' rx='2' fill='%231d3b2a'/%3E%3Cellipse cx='90' cy='27.5' rx='7' ry='10' fill='%23ffd23f'%3E%3Canimate attributeName='opacity' values='1;.45;1' dur='2.0s' begin='0.3s' repeatCount='indefinite'/%3E%3C/ellipse%3E%3Cellipse cx='87.5' cy='23.5' rx='2' ry='3.5' fill='white' opacity='.6'/%3E%3Crect x='146' y='11.5' width='8' height='7' rx='2' fill='%231d3b2a'/%3E%3Cellipse cx='150' cy='27.5' rx='7' ry='10' fill='%234fb3ff'%3E%3Canimate attributeName='opacity' values='1;.45;1' dur='2.4000000000000004s' begin='0.6s' repeatCount='indefinite'/%3E%3C/ellipse%3E%3Cellipse cx='147.5' cy='23.5' rx='2' ry='3.5' fill='white' opacity='.6'/%3E%3Crect x='206' y='11.5' width='8' height='7' rx='2' fill='%231d3b2a'/%3E%3Cellipse cx='210' cy='27.5' rx='7' ry='10' fill='%235fe39a'%3E%3Canimate attributeName='opacity' values='1;.45;1' dur='2.8000000000000003s' begin='0.8999999999999999s' repeatCount='indefinite'/%3E%3C/ellipse%3E%3Cellipse cx='207.5' cy='23.5' rx='2' ry='3.5' fill='white' opacity='.6'/%3E%3C/svg%3E") 0 0 / 240px 46px repeat-x; }
+
+.awning {
+  height: 64px;
+  background: repeating-linear-gradient(90deg, #e4483f 0 56px, #fff7ef 56px 112px);
+  -webkit-mask: radial-gradient(circle at 28px 0, #000 27px, transparent 28px) 0 100% / 56px 28px repeat-x,
+                linear-gradient(#000, #000) 0 0 / 100% calc(100% - 27px) no-repeat;
+          mask: radial-gradient(circle at 28px 0, #000 27px, transparent 28px) 0 100% / 56px 28px repeat-x,
+                linear-gradient(#000, #000) 0 0 / 100% calc(100% - 27px) no-repeat;
+  filter: drop-shadow(0 6px 0 rgba(0, 0, 0, 0.12));
+}
+
+.band { position: relative; overflow: hidden; }
+.band .drift { position: absolute; animation: drift linear infinite; will-change: transform; }
+@keyframes drift { from { transform: translateX(-30vw); } to { transform: translateX(130vw); } }
+.band .spin { animation: spin 40s linear infinite; transform-origin: center; }
+@keyframes spin { to { transform: rotate(360deg); } }
+.flake { position: absolute; top: -12px; color: #fff; opacity: 0.85; pointer-events: none; animation: fall linear infinite; }
+@keyframes fall { to { transform: translate(var(--sway, 20px), 260px) rotate(200deg); } }
+.edge { display: block; width: 100%; height: 56px; }
+
+@media (prefers-reduced-motion: reduce) {
+  .wordmark .ch, .band .drift, .band .spin, .flake { animation: none !important; }
+  .lights { background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='240' height='46' viewBox='0 0 240 46'%3E%3Cpath d='M0 5 Q30 20 60 5 T120 5 T180 5 T240 5' fill='none' stroke='%231d3b2a' stroke-width='2.5'/%3E%3Crect x='26' y='11.5' width='8' height='7' rx='2' fill='%231d3b2a'/%3E%3Cellipse cx='30' cy='27.5' rx='7' ry='10' fill='%23ff5a4f'%3E%3C/ellipse%3E%3Cellipse cx='27.5' cy='23.5' rx='2' ry='3.5' fill='white' opacity='.6'/%3E%3Crect x='86' y='11.5' width='8' height='7' rx='2' fill='%231d3b2a'/%3E%3Cellipse cx='90' cy='27.5' rx='7' ry='10' fill='%23ffd23f'%3E%3C/ellipse%3E%3Cellipse cx='87.5' cy='23.5' rx='2' ry='3.5' fill='white' opacity='.6'/%3E%3Crect x='146' y='11.5' width='8' height='7' rx='2' fill='%231d3b2a'/%3E%3Cellipse cx='150' cy='27.5' rx='7' ry='10' fill='%234fb3ff'%3E%3C/ellipse%3E%3Cellipse cx='147.5' cy='23.5' rx='2' ry='3.5' fill='white' opacity='.6'/%3E%3Crect x='206' y='11.5' width='8' height='7' rx='2' fill='%231d3b2a'/%3E%3Cellipse cx='210' cy='27.5' rx='7' ry='10' fill='%235fe39a'%3E%3C/ellipse%3E%3Cellipse cx='207.5' cy='23.5' rx='2' ry='3.5' fill='white' opacity='.6'/%3E%3C/svg%3E"); }
+}
+
+label.field { min-width: 0; }
+select { max-width: 100%; }

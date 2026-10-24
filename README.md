@@ -29,7 +29,7 @@ Tablet web apps for the kids: **Santa’s Catalog** (browse toys, build a printa
 
 ## Using it
 1. Open `kids.jackrayers.com/admin`, sign in, create a household, add kids.
-2. **Tablets → Get a code**, then on the kid’s tablet open `kids.jackrayers.com/pair` and type the code.
+2. **Tablets → Get a code** (choose *Everyone in the household* or *Only [kid]* to lock it to one kid; you can change this later), then on the kid’s tablet open `kids.jackrayers.com/pair` and type the code.
 3. On iPad: Share → *Add to Home Screen*. On Android Chrome: menu → *Install app*.
 4. **Kids → app switches:** tap an app under a kid to turn it on/off, or use *for everyone* per household.
 5. Other grown-ups: add them under **Grown-ups** *and* to the Access policy.

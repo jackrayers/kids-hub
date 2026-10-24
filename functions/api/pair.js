@@ -18,9 +18,9 @@ export async function onRequestPost({ request, env }) {
     // Guarded update so two simultaneous redemptions can't both succeed.
     env.DB.prepare(`UPDATE pairing_codes SET used_at = datetime('now') WHERE code = ? AND used_at IS NULL`).bind(code),
     env.DB.prepare(
-      `INSERT INTO devices (id, household_id, name, token_hash, created_by)
-       SELECT ?, ?, ?, ?, ? WHERE changes() = 1`,
-    ).bind(deviceId, pc.household_id, pc.device_name, await sha256Hex(token), pc.created_by),
+      `INSERT INTO devices (id, household_id, kid_id, name, token_hash, created_by)
+       SELECT ?, ?, ?, ?, ?, ? WHERE changes() = 1`,
+    ).bind(deviceId, pc.household_id, pc.kid_id, pc.device_name, await sha256Hex(token), pc.created_by),
   ]);
   if (!results[1].meta.changes) throw new HttpError(400, 'That code was already used.');
 

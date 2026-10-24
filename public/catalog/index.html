@@ -9,26 +9,36 @@
   <link rel="icon" href="/icons/icon.svg" type="image/svg+xml">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@600;700;800&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@600;700;800&family=Chewy&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="/shared/ui.css">
   <style>
-    body.santa-app {
+    body.santa-app { padding-top: 0; background: var(--cream); padding-bottom: calc(150px + env(safe-area-inset-bottom)); }
+    .shop {
+      margin: 0 -20px 6px;
+      padding: env(safe-area-inset-top) 0 0;
       background:
-        radial-gradient(circle at 8% 4%, rgba(255, 255, 255, 0.10) 0 6%, transparent 7%),
-        radial-gradient(circle at 92% 12%, rgba(255, 255, 255, 0.08) 0 9%, transparent 10%),
-        linear-gradient(180deg, #c93a32 0, #c93a32 210px, var(--cream) 210px);
-      padding-bottom: calc(150px + env(safe-area-inset-bottom));
+        radial-gradient(circle at 20% 30%, rgba(255, 255, 255, 0.06) 0 60px, transparent 61px),
+        radial-gradient(circle at 85% 70%, rgba(255, 255, 255, 0.05) 0 90px, transparent 91px),
+        linear-gradient(180deg, #17583c 0%, #1f6b4a 100%);
     }
-    .cat-head { display: flex; align-items: center; gap: 14px; max-width: 1100px; margin: 0 auto; color: #fff; }
-    .cat-head h1 { margin: 0; flex: 1; text-align: left; font-size: clamp(1.8rem, 5vw, 2.8rem); color: #fff; }
-    .cat-head .back-btn { color: var(--ink); }
-    .filters { display: flex; gap: 10px; overflow-x: auto; max-width: 1100px; margin: 18px auto 20px; padding: 4px 2px 10px; scrollbar-width: none; }
+    .shop .lights { margin-top: -18px; position: relative; z-index: 3; }
+    .shop-row {
+      position: relative; z-index: 2; display: flex; align-items: center; gap: 14px;
+      max-width: 1100px; margin: 0 auto; padding: 0 20px;
+    }
+    .shop-row h1 {
+      flex: 1; margin: 46px 0 0; font-size: clamp(2.6rem, 8vw, 4.6rem); --wm-outline: #0f3d29;
+    }
+    .shop-row .back-btn { text-decoration: none; }
+    .sleigh { top: calc(env(safe-area-inset-top) + 66px); width: 140px; z-index: 1; opacity: 0.9; }
+    .shop .edge { margin-top: 2px; height: 60px; }
+    .filters { display: flex; gap: 10px; overflow-x: auto; max-width: 1100px; margin: 4px auto 20px; padding: 4px 2px 10px; scrollbar-width: none; }
     .filters button {
-      flex: none; border: 0; border-radius: 999px; padding: 8px 18px 6px; background: rgba(255, 255, 255, 0.92);
-      font: 700 1.2rem/1 var(--font-fun); display: inline-flex; align-items: center; gap: 8px; box-shadow: 0 3px 0 rgba(0, 0, 0, 0.15);
+      flex: none; border: 3px solid #f0e4d2; border-radius: 999px; padding: 6px 18px 4px; background: var(--paper);
+      font: 700 1.2rem/1 var(--font-fun); display: inline-flex; align-items: center; gap: 8px; box-shadow: 0 3px 0 rgba(0, 0, 0, 0.08);
     }
     .filters button span.e { font-size: 1.6rem; }
-    .filters button[aria-pressed='true'] { background: var(--gold); }
+    .filters button[aria-pressed='true'] { background: var(--gold); border-color: #e3a414; }
     .toys { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 20px; max-width: 1100px; margin: 0 auto; }
     .toy {
       position: relative; border: 0; padding: 0; background: var(--paper); border-radius: 26px; box-shadow: var(--shadow);
@@ -80,9 +90,38 @@
   </style>
 </head>
 <body class="kid santa-app">
-  <header class="cat-head">
-    <a class="back-btn" href="/" style="text-decoration:none">↩ Back</a>
-    <h1>🎅 Santa’s Catalog</h1>
+  <header class="shop band" id="shop">
+    <div class="awning" aria-hidden="true"></div>
+    <div class="lights" aria-hidden="true"></div>
+
+    <svg class="sleigh drift" style="animation-duration:38s;animation-delay:-12s" viewBox="0 0 220 90" aria-hidden="true">
+      <!-- reindeer -->
+      <g fill="#b9773f" stroke="#7a4a22" stroke-width="2">
+        <ellipse cx="168" cy="44" rx="20" ry="11"/><circle cx="190" cy="32" r="8"/>
+        <path d="M152 52 l-4 16 M162 54 l-2 16 M176 54 l2 16 M184 50 l5 15" fill="none" stroke-linecap="round" stroke-width="4"/>
+      </g>
+      <path d="M186 24 l-4 -12 m2 6 l-7 -3 M194 24 l4 -12 m-2 6 l7 -3" stroke="#7a4a22" stroke-width="3" fill="none" stroke-linecap="round"/>
+      <circle cx="198" cy="33" r="3.5" fill="#ff4a3d"/>
+      <path d="M150 44 C130 40 110 46 96 50" stroke="#ffd84a" stroke-width="2" fill="none"/>
+      <!-- sleigh with Santa and sack -->
+      <circle cx="52" cy="26" r="15" fill="#8a5cd6"/><circle cx="64" cy="20" r="9" fill="#4f8fe8"/>
+      <circle cx="78" cy="30" r="8" fill="#ffe6cf" stroke="#d9b597" stroke-width="1.5"/>
+      <path d="M70 26 C72 10 88 6 92 20 Z" fill="#e4483f"/><circle cx="93" cy="20" r="4" fill="#fff"/>
+      <path d="M71 33 C74 44 84 44 86 33 Z" fill="#fff"/>
+      <path d="M30 36 H100 C104 36 104 60 92 62 H44 C30 62 24 48 30 36 Z" fill="#e4483f" stroke="#8f1f1a" stroke-width="2.5"/>
+      <path d="M24 72 H104 C114 72 116 62 110 60" fill="none" stroke="#ffd84a" stroke-width="5" stroke-linecap="round"/>
+      <path d="M48 62 V72 M88 62 V72" stroke="#ffd84a" stroke-width="4"/>
+    </svg>
+
+    <div class="shop-row">
+      <a class="back-btn" href="/">↩ Back</a>
+      <h1 class="wordmark" id="title">Santa’s Catalog</h1>
+    </div>
+
+    <svg class="edge" viewBox="0 0 1200 70" preserveAspectRatio="none" aria-hidden="true">
+      <path d="M0 26 C80 46 150 8 240 24 C330 40 380 14 470 22 C560 30 610 50 700 34 C790 18 860 40 950 30 C1040 20 1110 44 1200 28 L1200 70 L0 70 Z" fill="#ffffff"/>
+      <path d="M0 50 C200 40 400 60 600 50 C800 40 1000 62 1200 52 L1200 70 L0 70 Z" fill="var(--cream)"/>
+    </svg>
   </header>
   <nav class="filters" id="filters" aria-label="Kinds of toys"></nav>
   <main class="toys" id="toys"><p class="empty">Loading…</p></main>
@@ -107,6 +146,11 @@
 
   <script type="module">
     import { kidApi, esc, session } from '/shared/api.js';
+    import { setWordmark, snow } from '/shared/whimsy.js';
+
+    setWordmark(document.getElementById('title'), 'Santa’s Catalog',
+      { colors: ['#ffffff', '#ffd84a', '#ff7a6e', '#ffffff', '#b8f0c8'], hatFirst: true });
+    snow(document.getElementById('shop'), 30);
 
     const $ = (id) => document.getElementById(id);
     const kidId = new URLSearchParams(location.search).get('kid') || session.get('kh.kidId');

@@ -581,17 +581,28 @@
               <label class="field grow">Household<select name="household_id">${householdOptions(defaultHousehold())}</select></label>
               <label class="field grow">Tablet name<input name="device_name" placeholder="Playroom iPad" required maxlength="40"></label>
             </div>
+            <label class="field">Who uses it?<select name="kid_id" id="pair-kid"></select></label>
             <div><button class="btn primary">Get a code</button></div>
           </form>
           <div id="code-out"></div>
         </div>
         <div class="card"><h2>Paired tablets</h2><ul class="list" id="devices"><li class="muted">Loading…</li></ul></div>`;
 
-      $('#pair-form').addEventListener('submit', (e) => {
+      // "Everyone" or one kid from the chosen household.
+      const kidOptions = (householdId, selected) => `<option value="">Everyone in the household</option>` +
+        state.kids.filter((k) => k.household_id === householdId && k.active)
+          .map((k) => `<option value="${esc(k.id)}" ${k.id === selected ? 'selected' : ''}>Only ${esc(k.name)}</option>`).join('');
+      const pairForm = $('#pair-form');
+      const paintPairKids = () => { $('#pair-kid').innerHTML = kidOptions(pairForm.elements.household_id.value, ''); };
+      pairForm.elements.household_id.addEventListener('change', paintPairKids);
+      paintPairKids();
+
+      pairForm.addEventListener('submit', (e) => {
         e.preventDefault();
         run(async () => {
           const r = await adminApi('/pairing-codes', { method: 'POST', body: {
-            household_id: e.target.elements.household_id.value, device_name: e.target.elements.device_name.value } });
+            household_id: e.target.elements.household_id.value, device_name: e.target.elements.device_name.value,
+            kid_id: e.target.elements.kid_id.value || null } });
           const out = $('#code-out');
           const expires = Date.parse(r.expires_at);
           out.innerHTML = `
@@ -615,11 +626,18 @@
       $('#devices').innerHTML = devices.length ? devices.map((d) => `
         <li>
           <div class="main">
-            <div><strong>${esc(d.name)}</strong> · ${esc(d.household_name)} ${d.revoked_at ? '<span class="pill off">removed</span>' : ''}</div>
+            <div><strong>${esc(d.name)}</strong> · ${esc(d.household_name)}
+              ${d.revoked_at ? '<span class="pill off">removed</span>' : d.kid_name ? `<span class="pill">🔒 ${esc(d.kid_name)}</span>` : '<span class="pill">Shared</span>'}</div>
             <div class="meta">Paired ${esc(when(d.created_at))} by ${esc(d.created_by)} · last seen ${esc(when(d.last_seen))}</div>
+            ${d.revoked_at ? '' : `<select class="btn small" data-lock="${esc(d.id)}" aria-label="Who uses ${esc(d.name)}" style="margin-top:6px;max-width:100%">${kidOptions(d.household_id, d.kid_id)}</select>`}
           </div>
           ${d.revoked_at ? '' : `<button class="btn small danger" data-revoke="${esc(d.id)}">Remove</button>`}
         </li>`).join('') : '<li class="muted">No tablets yet.</li>';
+      main.querySelectorAll('[data-lock]').forEach((sel) => sel.addEventListener('change', () => run(async () => {
+        await adminApi(`/devices/${sel.dataset.lock}`, { method: 'PATCH', body: { kid_id: sel.value || null } });
+        toast(sel.value ? `Locked to ${sel.selectedOptions[0].textContent.replace('Only ', '')}` : 'Shared with the household');
+        renderTablets();
+      })));
       main.querySelectorAll('[data-revoke]').forEach((b) => b.addEventListener('click', () => {
         if (!confirm('Remove this tablet? It will need a new code to work again.')) return;
         run(async () => { await adminApi(`/devices/${b.dataset.revoke}`, { method: 'DELETE' }); renderTablets(); });
