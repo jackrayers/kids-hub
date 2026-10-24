@@ -74,7 +74,7 @@ Kids never log in; a paired device shows its household's kids. A tablet can inst
 - Parent mode → Shopping: each kid's wishes with Buy links (the product page, or a link added later), **Mark bought** shared across all grown-ups, filter to still-to-buy. Kid endpoints never return bought status.
 
 ## Santa letter
-- Kid's wish list → letter page: "Dear Santa", kid name, grid of coloring images (≤6), writing lines, drawing space.
+- Kid’s wish list → letter page: "Dear Santa", traced name, grid of coloring pictures only (≤6, no titles), holly corners.
 - Print CSS (`@page` Letter, portrait), print via OS share/AirPrint. No storage needed initially.
 
 ## Print Shop

@@ -53,8 +53,6 @@
     .wants.n5, .wants.n6 { grid-template-columns: repeat(3, 1fr); }
     .want { min-height: 0; padding: 0.6cqw; display: flex; flex-direction: column; align-items: center; gap: 1cqw; break-inside: avoid; }
     .want img { flex: 1; min-height: 0; width: 100%; object-fit: contain; }
-    .want .n { font-size: 2.6cqw; font-weight: 700; text-align: center; line-height: 1.1; }
-    .draw { flex: none; border: 0.35cqw dashed #999; border-radius: 3cqw; height: 15%; display: grid; place-items: start center; padding-top: 1.5cqw; color: #999; font-size: 2.8cqw; font-weight: 700; }
     .sign { display: flex; justify-content: flex-end; align-items: baseline; gap: 2cqw; font-size: 3.6cqw; font-weight: 700; }
     .sign .trace { font-size: 6cqw; }
     .deco { display: flex; justify-content: center; gap: 3cqw; font-size: 4cqw; filter: grayscale(1); opacity: 0.55; }
@@ -97,7 +95,6 @@
     <div class="line"><span>My name is</span> <span class="trace" id="name"></span></div>
     <div class="line"><span>I would love…</span></div>
     <div class="wants" id="wants"></div>
-    <div class="draw">Draw a picture for Santa!</div>
     <div class="sign"><span>Love,</span> <span class="trace" id="sign"></span></div>
     <div class="deco" aria-hidden="true">⭐ 🎄 🦌 🍪 🥛 🎄 ⭐</div>
   </article>
@@ -122,7 +119,7 @@
         const wants = $('wants');
         wants.className = `wants n${Math.max(1, toys.length)}`;
         wants.innerHTML = toys.length
-          ? toys.map((t) => `<div class="want"><img src="${esc(t.coloring)}" alt=""><div class="n">${esc(t.title)}</div></div>`).join('')
+          ? toys.map((t) => `<div class="want"><img src="${esc(t.coloring)}" alt="${esc(t.title)}"></div>`).join('')
           : '<p style="text-align:center;font-size:3cqw;color:#888">Pick some toys in the catalog first!</p>';
         document.title = `${data.kid.name}’s Letter to Santa`;
       } catch (err) {
