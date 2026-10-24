@@ -1,0 +1,109 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>My Letter to Santa</title>
+  <meta name="theme-color" content="#2e9b6a">
+  <link rel="manifest" href="/manifest.webmanifest">
+  <link rel="icon" href="/icons/icon.svg" type="image/svg+xml">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@600;700;800&family=Mountains+of+Christmas:wght@700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/shared/ui.css">
+  <style>
+    /* Screen: a toolbar above a paper preview. Print: just the paper, US Letter. */
+    @page { size: letter portrait; margin: 0.4in; }
+    body.letter-app { background: #2e9b6a; padding-bottom: calc(30px + env(safe-area-inset-bottom)); }
+    .toolbar { display: flex; flex-wrap: wrap; align-items: center; gap: 12px; max-width: 8.5in; margin: 0 auto 18px; }
+    .toolbar .grow { flex: 1; }
+    .print-btn {
+      border: 0; border-radius: 20px; padding: 14px 24px 10px; background: var(--gold); color: var(--ink);
+      font: 800 1.4rem/1 var(--font-fun); box-shadow: 0 5px 0 #c48d14;
+    }
+    .hint { color: #e9fff3; font-size: 1rem; max-width: 8.5in; margin: -8px auto 16px; }
+
+    .paper {
+      background: #fff; color: #222; width: min(100%, 8.5in); margin: 0 auto; border-radius: 10px;
+      box-shadow: 0 20px 50px rgba(0, 0, 0, 0.25);
+      aspect-ratio: 8.5 / 11; padding: 4.5% 5.5%;
+      display: flex; flex-direction: column; gap: 2.2%;
+      font-family: var(--font-fun);
+      container-type: inline-size;
+      overflow: hidden;
+    }
+    .dear { font: 700 9cqw/1 'Mountains of Christmas', var(--font-fun); text-align: center; margin: 0; }
+    .line { display: flex; align-items: baseline; gap: 2cqw; font-size: 3.4cqw; font-weight: 700; }
+    .line .fill { flex: 1; border-bottom: 0.35cqw dashed #999; min-height: 1.4em; }
+    .trace {
+      font: 800 7.5cqw/1 var(--font-fun); color: transparent;
+      -webkit-text-stroke: 0.3cqw #555; letter-spacing: 0.08em;
+    }
+    .wants { flex: 1; min-height: 0; display: grid; gap: 2.4cqw; grid-auto-rows: minmax(0, 1fr); }
+    .wants.n1 { grid-template-columns: 1fr; padding: 0 22%; }
+    .wants.n2, .wants.n3, .wants.n4 { grid-template-columns: repeat(2, 1fr); padding: 0 6%; }
+    .wants.n5, .wants.n6 { grid-template-columns: repeat(3, 1fr); }
+    .want { min-height: 0; border: 0.35cqw solid #222; border-radius: 3cqw; padding: 1.6cqw; display: flex; flex-direction: column; align-items: center; gap: 1cqw; break-inside: avoid; }
+    .want img { flex: 1; min-height: 0; width: 100%; object-fit: contain; }
+    .want .n { font-size: 2.6cqw; font-weight: 700; text-align: center; line-height: 1.1; }
+    .draw { flex: none; border: 0.35cqw dashed #999; border-radius: 3cqw; height: 15%; display: grid; place-items: start center; padding-top: 1.5cqw; color: #999; font-size: 2.8cqw; font-weight: 700; }
+    .sign { display: flex; justify-content: flex-end; align-items: baseline; gap: 2cqw; font-size: 3.6cqw; font-weight: 700; }
+    .sign .trace { font-size: 6cqw; }
+    .deco { display: flex; justify-content: center; gap: 3cqw; font-size: 4cqw; filter: grayscale(1); opacity: 0.55; }
+
+    @media print {
+      body.letter-app { background: #fff; padding: 0; }
+      .toolbar, .hint { display: none !important; }
+      .paper { box-shadow: none; border-radius: 0; width: 7.7in; height: 10.1in; aspect-ratio: auto; padding: 0.25in 0.35in; margin: 0; }
+      .deco { opacity: 0.4; }
+    }
+  </style>
+</head>
+<body class="kid letter-app">
+  <div class="toolbar">
+    <a class="back-btn" id="back" href="/catalog/" style="text-decoration:none">↩ Catalog</a>
+    <span class="grow"></span>
+    <button class="print-btn" id="print" type="button">🖨️ Print my letter</button>
+  </div>
+  <p class="hint">Grown-ups: if Print doesn’t open, use the Share button → Print.</p>
+
+  <article class="paper" id="paper" aria-label="Letter to Santa">
+    <h1 class="dear">Dear Santa,</h1>
+    <div class="line"><span>My name is</span> <span class="trace" id="name"></span></div>
+    <div class="line"><span>This year I have been</span> <span class="fill"></span></div>
+    <div class="line"><span>I would love…</span></div>
+    <div class="wants" id="wants"></div>
+    <div class="draw">Draw a picture for Santa!</div>
+    <div class="sign"><span>Love,</span> <span class="trace" id="sign"></span></div>
+    <div class="deco" aria-hidden="true">⭐ 🎄 🦌 🍪 🥛 🎄 ⭐</div>
+  </article>
+
+  <script type="module">
+    import { kidApi, esc, session } from '/shared/api.js';
+
+    const $ = (id) => document.getElementById(id);
+    const kidId = new URLSearchParams(location.search).get('kid') || session.get('kh.kidId');
+    if (!kidId) location.href = '/';
+    $('back').href = `/catalog/?kid=${encodeURIComponent(kidId)}`;
+
+    $('print').addEventListener('click', () => window.print());
+
+    (async () => {
+      try {
+        const data = await kidApi(`/catalog?kid=${encodeURIComponent(kidId)}`);
+        const toys = data.wishlist.map((id) => data.toys.find((t) => t.id === id)).filter(Boolean);
+        $('name').textContent = data.kid.name;
+        $('sign').textContent = data.kid.name;
+        const wants = $('wants');
+        wants.className = `wants n${Math.max(1, toys.length)}`;
+        wants.innerHTML = toys.length
+          ? toys.map((t) => `<div class="want"><img src="${esc(t.coloring)}" alt=""><div class="n">${esc(t.title)}</div></div>`).join('')
+          : '<p style="text-align:center;font-size:3cqw;color:#888">Pick some toys in the catalog first!</p>';
+        document.title = `${data.kid.name}’s Letter to Santa`;
+      } catch (err) {
+        $('wants').innerHTML = `<p>${esc(err.message)}</p>`;
+      }
+    })();
+  </script>
+</body>
+</html>

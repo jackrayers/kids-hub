@@ -66,7 +66,7 @@ export function esc(value) {
   ));
 }
 
-/** Avatar markup: photo if present, otherwise emoji (or initial) on the kid's colour. */
+/** Avatar markup: photo if present, otherwise emoji (or initial) on the kid's color. */
 export function avatarHtml(kid, extraClass = '') {
   const style = `--tile:${esc(kid.color || '#f5b82e')}`;
   const inner = kid.avatar_url

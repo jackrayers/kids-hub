@@ -1,0 +1,235 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>Santa’s Catalog</title>
+  <meta name="theme-color" content="#b9302a">
+  <link rel="manifest" href="/manifest.webmanifest">
+  <link rel="icon" href="/icons/icon.svg" type="image/svg+xml">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/shared/ui.css">
+  <style>
+    body.santa-app {
+      background:
+        radial-gradient(circle at 8% 4%, rgba(255, 255, 255, 0.10) 0 6%, transparent 7%),
+        radial-gradient(circle at 92% 12%, rgba(255, 255, 255, 0.08) 0 9%, transparent 10%),
+        linear-gradient(180deg, #c93a32 0, #c93a32 210px, var(--cream) 210px);
+      padding-bottom: calc(150px + env(safe-area-inset-bottom));
+    }
+    .cat-head { display: flex; align-items: center; gap: 14px; max-width: 1100px; margin: 0 auto; color: #fff; }
+    .cat-head h1 { margin: 0; flex: 1; text-align: left; font-size: clamp(1.8rem, 5vw, 2.8rem); color: #fff; }
+    .cat-head .back-btn { color: var(--ink); }
+    .filters { display: flex; gap: 10px; overflow-x: auto; max-width: 1100px; margin: 18px auto 20px; padding: 4px 2px 10px; scrollbar-width: none; }
+    .filters button {
+      flex: none; border: 0; border-radius: 999px; padding: 8px 18px 6px; background: rgba(255, 255, 255, 0.92);
+      font: 700 1.2rem/1 var(--font-fun); display: inline-flex; align-items: center; gap: 8px; box-shadow: 0 3px 0 rgba(0, 0, 0, 0.15);
+    }
+    .filters button span.e { font-size: 1.6rem; }
+    .filters button[aria-pressed='true'] { background: var(--gold); }
+    .toys { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 20px; max-width: 1100px; margin: 0 auto; }
+    .toy {
+      position: relative; border: 0; padding: 0; background: var(--paper); border-radius: 26px; box-shadow: var(--shadow);
+      overflow: hidden; text-align: left; display: flex; flex-direction: column;
+    }
+    .toy img { width: 100%; aspect-ratio: 1; object-fit: cover; background: #fff3df; }
+    .toy .t { padding: 10px 14px 14px; font: 700 1.15rem/1.15 var(--font-fun); }
+    .heart {
+      position: absolute; top: 10px; right: 10px; width: 56px; height: 56px; border-radius: 50%; border: 0;
+      background: rgba(255, 255, 255, 0.95); font-size: 1.9rem; display: grid; place-items: center;
+      box-shadow: 0 3px 0 rgba(0, 0, 0, 0.12); transition: transform 0.15s ease;
+    }
+    .heart[aria-pressed='true'] { background: #ffe1e1; }
+    .heart:active { transform: scale(0.9); }
+    .heart.pop { animation: pop 0.35s ease; }
+    @keyframes pop { 40% { transform: scale(1.3); } }
+
+    .tray {
+      position: fixed; left: 0; right: 0; bottom: 0; z-index: 10;
+      background: var(--paper); box-shadow: 0 -8px 30px rgba(43, 33, 64, 0.15);
+      border-radius: 28px 28px 0 0;
+      padding: 14px max(16px, env(safe-area-inset-right)) calc(14px + env(safe-area-inset-bottom)) max(16px, env(safe-area-inset-left));
+    }
+    .tray-in { max-width: 1100px; margin: 0 auto; display: flex; align-items: center; gap: 14px; }
+    .tray-slots { display: flex; gap: 8px; flex: 1; overflow-x: auto; }
+    .slot { flex: none; width: 74px; height: 74px; border-radius: 18px; border: 3px dashed var(--line); background: var(--cream); overflow: hidden; padding: 0; }
+    .slot img { width: 100%; height: 100%; object-fit: cover; }
+    .slot.filled { border: 3px solid var(--gold); }
+    .letter-btn {
+      flex: none; border: 0; border-radius: 22px; padding: 14px 22px 10px; background: var(--green); color: #fff;
+      font: 800 1.4rem/1 var(--font-fun); box-shadow: 0 5px 0 var(--green-deep); text-decoration: none; display: inline-flex; gap: 8px; align-items: center;
+    }
+    .letter-btn[aria-disabled='true'] { opacity: 0.45; pointer-events: none; }
+
+    .big { border: 0; padding: 0; width: min(560px, calc(100vw - 32px)); border-radius: 32px; overflow: hidden; }
+    .big img { width: 100%; aspect-ratio: 1; object-fit: cover; background: #fff3df; }
+    .big .b { padding: 16px 20px 20px; display: grid; gap: 14px; }
+    .big h2 { margin: 0; font: 800 1.8rem/1.1 var(--font-fun); }
+    .big .row { display: flex; gap: 12px; }
+    .big .row button { flex: 1; }
+    .want { border: 0; border-radius: 20px; padding: 14px; font: 800 1.4rem/1 var(--font-fun); background: var(--red); color: #fff; box-shadow: 0 5px 0 var(--red-deep); }
+    .want.on { background: var(--paper); color: var(--red-deep); box-shadow: inset 0 0 0 3px var(--red); }
+    .close { border: 0; border-radius: 20px; padding: 14px; font: 700 1.3rem/1 var(--font-fun); background: var(--cream); }
+    .bubble {
+      position: fixed; left: 50%; bottom: calc(120px + env(safe-area-inset-bottom)); transform: translateX(-50%); z-index: 20;
+      background: var(--ink); color: #fff; padding: 12px 20px; border-radius: 18px; font: 700 1.2rem/1.2 var(--font-fun); max-width: calc(100vw - 32px); text-align: center;
+    }
+    @media (prefers-reduced-motion: reduce) { .heart.pop { animation: none; } }
+  </style>
+</head>
+<body class="kid santa-app">
+  <header class="cat-head">
+    <a class="back-btn" href="/" style="text-decoration:none">↩ Back</a>
+    <h1>🎅 Santa’s Catalog</h1>
+  </header>
+  <nav class="filters" id="filters" aria-label="Kinds of toys"></nav>
+  <main class="toys" id="toys"><p class="empty">Loading…</p></main>
+
+  <div class="tray" id="tray" hidden>
+    <div class="tray-in">
+      <div class="tray-slots" id="slots" aria-label="My list"></div>
+      <a class="letter-btn" id="letter-btn" href="#">✏️ <span>My letter</span></a>
+    </div>
+  </div>
+
+  <dialog class="big" id="big">
+    <img id="big-img" alt="">
+    <div class="b">
+      <h2 id="big-title"></h2>
+      <div class="row">
+        <button class="want" id="big-want" type="button"></button>
+        <button class="close" id="big-close" type="button">Close</button>
+      </div>
+    </div>
+  </dialog>
+
+  <script type="module">
+    import { kidApi, esc, session } from '/shared/api.js';
+
+    const $ = (id) => document.getElementById(id);
+    const kidId = new URLSearchParams(location.search).get('kid') || session.get('kh.kidId');
+    if (!kidId) location.href = '/';
+
+    let data = { toys: [], categories: [], wishlist: [], wishlist_max: 6 };
+    let filter = 'all';
+    let open = null;
+
+    const wished = (id) => data.wishlist.includes(id);
+    const toyById = (id) => data.toys.find((t) => t.id === id);
+
+    function say(text) {
+      document.querySelector('.bubble')?.remove();
+      const b = document.createElement('div');
+      b.className = 'bubble';
+      b.textContent = text;
+      document.body.append(b);
+      setTimeout(() => b.remove(), 2600);
+    }
+
+    function renderFilters() {
+      const chips = [{ id: 'all', name: 'Everything', icon: '✨' }, ...data.categories];
+      $('filters').innerHTML = chips.map((c) => `
+        <button type="button" data-cat="${esc(c.id)}" aria-pressed="${filter === c.id}" aria-label="${esc(c.name)}">
+          <span class="e" aria-hidden="true">${esc(c.icon)}</span><span>${esc(c.name)}</span>
+        </button>`).join('');
+    }
+
+    function renderToys() {
+      const list = data.toys.filter((t) => filter === 'all' || t.category === filter);
+      $('toys').innerHTML = list.length ? list.map((t) => `
+        <div class="toy" data-id="${esc(t.id)}" role="button" tabindex="0" aria-label="${esc(t.title)}">
+          <img src="${esc(t.image)}" alt="" loading="lazy">
+          <div class="t">${esc(t.title)}</div>
+          <button class="heart" type="button" data-heart="${esc(t.id)}" aria-pressed="${wished(t.id)}"
+            aria-label="${wished(t.id) ? 'Take off my list' : 'Add to my list'}">${wished(t.id) ? '❤️' : '🤍'}</button>
+        </div>`).join('')
+        : '<p class="empty" style="grid-column:1/-1">Santa’s elves are still filling the catalog. Check back soon!</p>';
+    }
+
+    function renderTray() {
+      $('tray').hidden = false;
+      const slots = [];
+      for (let i = 0; i < data.wishlist_max; i++) {
+        const t = toyById(data.wishlist[i]);
+        slots.push(t
+          ? `<button class="slot filled" type="button" data-slot="${esc(t.id)}" aria-label="${esc(t.title)}"><img src="${esc(t.image)}" alt=""></button>`
+          : '<span class="slot" aria-hidden="true"></span>');
+      }
+      $('slots').innerHTML = slots.join('');
+      const btn = $('letter-btn');
+      btn.href = `/letter/?kid=${encodeURIComponent(kidId)}`;
+      btn.setAttribute('aria-disabled', data.wishlist.length ? 'false' : 'true');
+    }
+
+    function renderAll() { renderFilters(); renderToys(); renderTray(); }
+
+    async function toggle(id) {
+      const adding = !wished(id);
+      try {
+        const res = await kidApi('/wishlist', { method: adding ? 'POST' : 'DELETE', body: { kid_id: kidId, toy_id: id } });
+        data.wishlist = res.wishlist;
+        renderToys();
+        renderTray();
+        if (adding) {
+          document.querySelector(`[data-heart="${CSS.escape(id)}"]`)?.classList.add('pop');
+          say(data.wishlist.length >= data.wishlist_max ? 'Your list is full! Time to write your letter ✏️' : 'Added to your list! 🎁');
+        }
+        if (open === id) paintBig();
+      } catch (err) {
+        say(err.message);
+      }
+    }
+
+    function paintBig() {
+      const t = toyById(open);
+      $('big-img').src = t.image;
+      $('big-title').textContent = t.title;
+      const on = wished(t.id);
+      $('big-want').textContent = on ? '💔 Take off my list' : '❤️ I want this!';
+      $('big-want').classList.toggle('on', on);
+    }
+
+    $('filters').addEventListener('click', (e) => {
+      const b = e.target.closest('[data-cat]');
+      if (!b) return;
+      filter = b.dataset.cat;
+      renderFilters();
+      renderToys();
+    });
+    $('toys').addEventListener('click', (e) => {
+      const heart = e.target.closest('[data-heart]');
+      if (heart) { e.stopPropagation(); toggle(heart.dataset.heart); return; }
+      const card = e.target.closest('.toy');
+      if (!card) return;
+      open = card.dataset.id;
+      paintBig();
+      $('big').showModal();
+    });
+    $('toys').addEventListener('keydown', (e) => {
+      if ((e.key === 'Enter' || e.key === ' ') && e.target.classList.contains('toy')) { e.preventDefault(); e.target.click(); }
+    });
+    $('slots').addEventListener('click', (e) => {
+      const s = e.target.closest('[data-slot]');
+      if (!s) return;
+      open = s.dataset.slot;
+      paintBig();
+      $('big').showModal();
+    });
+    $('big-want').addEventListener('click', () => toggle(open));
+    $('big-close').addEventListener('click', () => $('big').close());
+    $('big').addEventListener('click', (e) => { if (e.target === $('big')) $('big').close(); });
+
+    (async () => {
+      try {
+        data = await kidApi(`/catalog?kid=${encodeURIComponent(kidId)}`);
+        session.set('kh.kidId', kidId);
+        renderAll();
+      } catch (err) {
+        $('toys').innerHTML = `<p class="empty">${esc(err.message)}</p>`;
+      }
+    })();
+  </script>
+</body>
+</html>

@@ -4,7 +4,7 @@ Tablet web apps for the kids: **Santa’s Catalog** (browse toys, build a printa
 
 ## Status
 - ✅ **Foundation** — households, kids (photo/emoji avatars), token ledger, tablet pairing, parent mode, Home Assistant award hook
-- ⏳ Santa’s Catalog
+- ✅ **Santa’s Catalog** — add toys by link or photo, Gemini storybook + coloring-page pictures, kid browsing with hearts (6 max), printable letter to Santa, wish lists for grown-ups
 - ⏳ Print Shop
 
 ## One-time Cloudflare setup
@@ -21,6 +21,11 @@ Tablet web apps for the kids: **Santa’s Catalog** (browse toys, build a printa
    - In `wrangler.toml` `[vars]`: `ACCESS_TEAM_DOMAIN` = `<your-team>.cloudflareaccess.com`, `ACCESS_AUD` = the AUD tag. Commit.
    - Owner email as a secret: `npx wrangler pages secret put OWNER_EMAIL --project-name kids-hub` (you become owner on first sign-in).
 8. Deploy: `npm run deploy` (or push to `main` if connected to Git).
+
+## Santa’s Catalog setup
+1. `npm run db:migrate:remote` (adds the toys and wish-list tables).
+2. `npx wrangler pages secret put GEMINI_API_KEY --project-name kids-hub`, then retry the latest deployment.
+3. Optional: set `GEMINI_IMAGE_MODEL` in `wrangler.toml` `[vars]` (default `gemini-3.1-flash-image`).
 
 ## Using it
 1. Open `kids.jackrayers.com/admin`, sign in, create a household, add kids.

@@ -3,3 +3,7 @@
 DEV_ADMIN_EMAIL=you@example.com
 # Becomes the owner on first sign-in (set this in Pages production too).
 OWNER_EMAIL=you@example.com
+# Placeholder pictures instead of calling Gemini (local dev):
+GEMINI_MOCK=1
+# Or real generation:
+# GEMINI_API_KEY=...

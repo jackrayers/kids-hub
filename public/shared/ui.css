@@ -339,3 +339,21 @@ dialog .avatar { --size: 84px; margin: 0 auto; }
 .chip.app-toggle { padding: 3px 10px; font-size: 0.8rem; color: var(--ink-soft); }
 .chip.app-toggle[aria-pressed='false'] { opacity: 0.55; text-decoration: line-through; }
 .chip.app-toggle[aria-pressed='true'] { color: var(--green-deep); }
+
+/* Catalog (parent mode) */
+.toy-list li.toy-draft { display: grid; gap: 10px; align-items: stretch; }
+.toy-pics { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; }
+.toy-pic { margin: 0; display: grid; gap: 4px; }
+.toy-pic img, .toy-pic-busy, .toy-pic-empty {
+  width: 100%; aspect-ratio: 1; object-fit: cover; border-radius: 12px; border: 1px solid var(--line); background: var(--cream);
+}
+.toy-pic-busy, .toy-pic-empty { display: grid; place-items: center; color: var(--ink-soft); font-size: 0.85rem; }
+.toy-pic-busy { animation: pulse 1.2s ease-in-out infinite; }
+@keyframes pulse { 50% { opacity: 0.45; } }
+@media (prefers-reduced-motion: reduce) { .toy-pic-busy { animation: none; } }
+.toy-pic figcaption { font-size: 0.75rem; color: var(--ink-soft); text-align: center; }
+.toy-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(130px, 1fr)); gap: 12px; }
+.toy-tile { display: grid; gap: 6px; }
+.toy-tile img { width: 100%; aspect-ratio: 1; object-fit: cover; border-radius: 12px; border: 1px solid var(--line); }
+.toy-tile-name { font-weight: 600; font-size: 0.9rem; line-height: 1.25; }
+.btn:disabled { opacity: 0.5; cursor: default; }

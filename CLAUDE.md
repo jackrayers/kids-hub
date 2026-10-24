@@ -21,4 +21,8 @@ cp .dev.vars.example .dev.vars        # set your email
 npm run db:migrate:local
 npm run dev                            # http://localhost:8788
 ```
-`DEV_ADMIN_EMAIL` bypasses Access on localhost only.
+`DEV_ADMIN_EMAIL` bypasses Access on localhost only. `GEMINI_MOCK=1` makes placeholder pictures instead of calling Gemini.
+
+## Catalog notes
+- Prompts and categories live in `lib/catalog.js`; generation in `lib/gemini.js` (tries AI Studio, then Vertex express).
+- Coloring pages are generated *from the storybook picture*, so redoing the storybook means redoing coloring too.

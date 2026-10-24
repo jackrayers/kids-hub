@@ -81,7 +81,7 @@ Kids never log in; a paired device shows its household's kids.
 - Queue view for adults: Requested → Printing → Done, or Refund.
 
 ## Projects
-1. **Foundation** — Pages project, wrangler config, D1 migration, R2, Access, pairing, kid picker, parent mode shell (kids, adults, tokens, devices).
-2. **Santa Catalog** — import, Gemini pipeline, review/approve, browse, wish list, letter. *Target: before Thanksgiving.*
+1. **Foundation** ✅ — Pages project, wrangler config, D1 migration, R2, Access, pairing, kid picker, parent mode shell (kids, adults, tokens, devices).
+2. **Santa Catalog** ✅ — import, Gemini pipeline, review/approve, browse, wish list (max 6), letter.
 3. **Print Shop** — filaments, models, spending, queue, refunds, HA notify.
 4. **Later** — HA chore integration, kid-facing token history, letter "send to Santa" view for adults.
