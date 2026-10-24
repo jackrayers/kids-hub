@@ -81,21 +81,21 @@ Kids never log in; a paired device shows its household's kids. A tablet can inst
 - Kid’s wish list → letter page: "Dear Santa", traced name, grid of coloring pictures only (≤6, no titles), holly corners.
 - **Print my letter** draws the letter on a 200 dpi canvas and saves it as a true US Letter PDF (`public/letter/pdf.js`, jsPDF vendored in `public/vendor/`), then opens the share sheet → Print. Browsers scale printed web pages unpredictably; PDFs print true to size. The on-screen page is just the preview.
 
-## Print Shop
-- Model has 1–5 color slots (MMU3). Kid picks a filament per slot from `in_stock` swatches.
-- Cost = `cost_override` ?? `base_cost + per_color_cost × (distinct colors − 1)`.
-- New request → POST to HA webhook (`HA_WEBHOOK_URL` secret) for a phone notification.
-- Queue view for adults: Requested → Printing → Done, or Refund.
+## Visibility (toys and models)
+- `item_audience` rows restrict a toy or model; **no rows = everyone**. Rows name households and/or individual kids; a kid sees the item if either matches (`lib/audience.js`, `visibleSql`). Jack uploads once and shares across families. Set from the 👪 chip in parent mode.
 
-## Print Shop — design (agreed, not built yet)
-- **Input:** a PrusaSlicer project `.3mf` (Jack verifies/paints it in PrusaSlicer; Bambu-painted MakerWorld files go through OrcaSlicer first). Always printed manually.
-- **Slots = extruders 1–5.** Unpainted triangles use the object's extruder (default 1). Painted triangles carry `slic3rpe:mmu_segmentation` — PrusaSlicer's TriangleSelector bitstream: hex chars read from the *end*, LSB-first nibbles; each node's first nibble = low 2 bits split sides (0 = leaf), high 2 bits = state (leaf; if 3, state = next nibble + 3) or special side (split → sides+1 children). State 0 = default extruder, N = extruder N. Default slot colors from `extruder_colour` in `Metadata/Slic3r_PE.config`.
-- **Proven on pikachu-v2.3mf (2026-10-24):** 125k triangles / 10.5 MB XML; parse 0.25 s + decode in JS; per-slot simplification with meshoptimizer (`LockBorder`) to 40k triangles in 0.12 s; quantized positions + uint16 indices = 361 KB raw, **~280 KB gzipped**, visually indistinguishable at tablet size.
-- **Pipeline:** parent mode (desktop browser) unzips (fflate), decodes, simplifies, uploads the tiny preview + thumbnail; original 3MF stored in R2 for download. Kids get a small WebGL viewer that recolors slots live from in-stock filaments.
-- **Pricing:** per model, `price_single` (all slots one filament) and `price_multi` (2+ filaments), set by Jack.
+## Print Shop ✅
+- **Input:** a PrusaSlicer project `.3mf` (Jack verifies/paints it in PrusaSlicer; Bambu-painted MakerWorld files go through OrcaSlicer first). No printability checks. Always printed manually; the original 3MF is stored in R2 and downloadable from the queue.
+- **Slots = extruders 1–5.** Unpainted triangles use the volume's/object's extruder (default 1). Painted triangles carry `slic3rpe:mmu_segmentation` — PrusaSlicer's TriangleSelector bitstream: hex chars read from the *end*, LSB-first nibbles; each node's first nibble = low 2 bits split sides (0 = leaf), high 2 bits = state (leaf; if 3, state = next nibble + 3) or special side (split → sides+1 children). State 0 = default extruder, N = extruder N. Default slot colors from `extruder_colour` in `Metadata/Slic3r_PE.config`.
+- **Intake (parent mode, `public/shared/threemf.js`):** unzip (fflate) → decode → per-slot simplify with meshoptimizer (`LockBorder`) to ~40k triangles → **KHM1** preview (JSON header + Int16 quantized positions + 16/32-bit indices, groups per extruder) + 640px transparent WebP thumbnail. Pikachu: 10.5 MB XML → 361 KB preview. Changing a slot's preview color re-takes the thumbnail.
+- **Kid page (`public/print/`):** shelf of thumbnails with ⭐ prices → workbench with a WebGL viewer (`public/shared/model-viewer.js`, no libraries; drag to spin) and a swatch row per slot from in-stock filaments, 🎲 Surprise me, live price, confirm, confetti, "My prints" with statuses.
+- **Pricing:** per model, `price_single` (every slot the same filament) and `price_multi` (2+ filaments).
+- **Spend:** one guarded batch — insert the request only if balance ≥ cost, then the ledger spend `WHERE changes() = 1`. Refund = status `refunded` + positive ledger row.
+- New request → optional POST to `HA_WEBHOOK_URL` (secret) with `{event, kid, model, cost, multi, colors, message}`.
+- Queue: Waiting → Printing → Done, or Refund (with a reason).
 
 ## Projects
 1. **Foundation** ✅ — Pages project, wrangler config, D1 migration, R2, Access, pairing, kid picker, parent mode shell (kids, adults, tokens, devices).
 2. **Santa Catalog** ✅ — import, Gemini pipeline, review/approve, browse, wish list (max 6), letter.
-3. **Print Shop** — filaments, models, spending, queue, refunds, HA notify.
+3. **Print Shop** ✅ — filaments, models, spending, queue, refunds, HA notify.
 4. **Later** — HA chore integration, kid-facing token history, letter "send to Santa" view for adults.

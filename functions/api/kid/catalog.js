@@ -1,4 +1,5 @@
 // GET /api/kid/catalog?kid=<id> → approved toys, categories, and this kid's wish list.
+import { visibleBinds, visibleSql } from '../../../lib/audience.js';
 import { CATEGORIES, WISHLIST_MAX } from '../../../lib/catalog.js';
 import { json } from '../../../lib/http.js';
 import { requireOwnKid } from '../../../lib/kid-access.js';
@@ -6,10 +7,11 @@ import { requireOwnKid } from '../../../lib/kid-access.js';
 export async function onRequestGet({ request, env, data }) {
   const kid = await requireOwnKid(env, data.device, new URL(request.url).searchParams.get('kid'), 'santa');
   const [toys, wish] = await env.DB.batch([
-    env.DB.prepare(`SELECT id, title, category, stylized_key, coloring_key, cutout_key FROM toys
-      WHERE status = 'approved' ORDER BY sort, created_at DESC`),
+    env.DB.prepare(`SELECT t.id, t.title, t.category, t.stylized_key, t.coloring_key, t.cutout_key FROM toys t
+      WHERE t.status = 'approved' AND ${visibleSql('t')} ORDER BY t.sort, t.created_at DESC`).bind(...visibleBinds('toy', kid)),
     env.DB.prepare(`SELECT w.toy_id FROM wishlist w JOIN toys t ON t.id = w.toy_id
-      WHERE w.kid_id = ? AND w.removed_at IS NULL AND t.status = 'approved' ORDER BY w.added_at`).bind(kid.id),
+      WHERE w.kid_id = ? AND w.removed_at IS NULL AND t.status = 'approved' AND ${visibleSql('t')}
+      ORDER BY w.added_at`).bind(kid.id, ...visibleBinds('toy', kid)),
   ]);
   const used = new Set(toys.results.map((t) => t.category));
   return json({

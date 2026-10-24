@@ -1,5 +1,6 @@
 // GET  /api/admin/toys?status=draft|approved|hidden
 // POST /api/admin/toys?title=...&category=...   body: image/jpeg|png|webp (a photo of the toy)
+import { audienceMap } from '../../../../lib/audience.js';
 import { CATEGORIES, getToyRow, requireCategory, shapeToy } from '../../../../lib/catalog.js';
 import { newId } from '../../../../lib/crypto.js';
 import { IMAGE_TYPES, MAX_IMAGE_BYTES } from '../../../../lib/fetch-product.js';
@@ -12,7 +13,8 @@ export async function onRequestGet({ request, env }) {
     ? env.DB.prepare('SELECT * FROM toys WHERE status = ? ORDER BY created_at DESC').bind(status)
     : env.DB.prepare(`SELECT * FROM toys ORDER BY CASE status WHEN 'draft' THEN 0 WHEN 'approved' THEN 1 ELSE 2 END, created_at DESC`);
   const { results } = await stmt.all();
-  return json({ toys: results.map(shapeToy), categories: CATEGORIES });
+  const audience = await audienceMap(env.DB, 'toy');
+  return json({ toys: results.map((r) => ({ ...shapeToy(r), audience: audience[r.id] || null })), categories: CATEGORIES });
 }
 
 export async function onRequestPost({ request, env, data }) {

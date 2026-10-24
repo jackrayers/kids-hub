@@ -5,7 +5,8 @@ Tablet web apps for the kids: **Santa’s Catalog** (browse toys, build a printa
 ## Status
 - ✅ **Foundation** — households, kids (photo/emoji avatars), token ledger, tablet pairing, parent mode, Home Assistant award hook
 - ✅ **Santa’s Catalog** — add toys by link or photo, Gemini storybook + coloring-page pictures, kid browsing with hearts (6 max), printable letter to Santa, shopping list with Buy links and shared “bought” ticks
-- ⏳ Print Shop
+- ✅ **Print Shop** — upload painted PrusaSlicer projects, kids spin a 3D preview, pick colors from in-stock filaments and spend stars; print queue with refunds
+- ✅ **Visibility** — any toy or model can be limited to certain households and/or kids (default: everyone)
 
 ## One-time Cloudflare setup
 1. **D1:** `npx wrangler d1 create kids-hub` → paste the `database_id` into `wrangler.toml`.
@@ -30,6 +31,12 @@ Tablet web apps for the kids: **Santa’s Catalog** (browse toys, build a printa
 1. Migrations run automatically (see Deploys).
 2. `npx wrangler pages secret put GEMINI_API_KEY --project-name kids-hub`, then retry the latest deployment.
 3. Optional: set `GEMINI_IMAGE_MODEL` in `wrangler.toml` `[vars]` (default `gemini-3.1-flash-image`).
+
+## Print Shop setup
+1. Migrations run automatically (see Deploys).
+2. Optional phone ping for new requests: make a Home Assistant webhook automation, then `npx wrangler pages secret put HA_WEBHOOK_URL --project-name kids-hub` with its URL (e.g. `https://ha.example.com/api/webhook/kids-hub-print`). The JSON body has `message`, `kid`, `model`, `cost`, `colors`.
+3. Parent mode → **Print Shop → Filaments**: add the colors you have on hand; untick *in stock* when one runs out.
+4. **Models → Choose .3mf project** (from a computer): paint it in PrusaSlicer, *File → Save Project As*. Name the colors, set ⭐ one-color / mixed prices, pick who can see it, then **Put in shop**.
 
 ## Using it
 1. Open `kids.jackrayers.com/admin`, sign in, create a household, add kids.

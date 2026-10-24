@@ -1,0 +1,316 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>Print Shop</title>
+  <meta name="theme-color" content="#5d3aa8">
+  <link rel="manifest" href="/manifest.webmanifest">
+  <link rel="icon" href="/icons/icon.svg" type="image/svg+xml">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@600;700;800&family=Chewy&display=swap" media="print" onload="this.media='all'">
+  <noscript><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@600;700;800&family=Chewy&display=swap"></noscript>
+  <link rel="stylesheet" href="/shared/ui.css">
+  <style>
+    body.print-app { padding-top: 0; background: var(--cream); padding-bottom: calc(40px + env(safe-area-inset-bottom)); }
+    /* Workshop header: purple band, dotted pegboard, gears. */
+    .workshop {
+      margin: 0 -20px 6px; padding: env(safe-area-inset-top) 0 0;
+      background:
+        radial-gradient(circle, rgba(255, 255, 255, 0.13) 2.5px, transparent 3.5px) 0 0 / 26px 26px,
+        linear-gradient(180deg, #5d3aa8 0%, #7a52cc 100%);
+    }
+    .ws-row { position: relative; z-index: 2; display: flex; align-items: center; gap: 14px; max-width: 1100px; margin: 0 auto; padding: 18px 20px 0; }
+    .ws-row h1 { flex: 1; min-width: 0; margin: 0; font-size: clamp(2.4rem, 8vw, 4.4rem); --wm-outline: #3d2378; }
+    .ws-row .back-btn { text-decoration: none; }
+    .gear { position: absolute; z-index: 1; opacity: 0.18; }
+    .gear.g1 { width: 120px; right: 4%; top: calc(env(safe-area-inset-top) + 6px); }
+    .gear.g2 { width: 70px; right: calc(4% + 100px); top: calc(env(safe-area-inset-top) + 70px); animation-direction: reverse; }
+    .stars-big { font-size: 1.5rem; padding: 6px 16px 4px 12px; box-shadow: 0 4px 0 rgba(122, 82, 0, 0.25); flex: none; }
+    .workshop .edge { height: 52px; margin-top: 6px; }
+
+    .wall { margin: 0 -20px; padding: 18px 20px 30px; background: repeating-linear-gradient(90deg, #f6f0ff 0 26px, #efe7fd 26px 52px); }
+    .models { display: grid; grid-template-columns: repeat(auto-fill, minmax(170px, 1fr)); column-gap: 0; row-gap: 30px; max-width: 1100px; margin: 0 auto; }
+    .model { position: relative; display: flex; flex-direction: column; align-items: center; border: 0; background: none; padding: 0; }
+    .model .stage { width: 100%; padding: 0 12px; }
+    .model .stage img { display: block; width: 100%; aspect-ratio: 1; object-fit: contain; object-position: 50% 100%; filter: drop-shadow(0 7px 4px rgba(60, 30, 110, 0.28)); transition: transform 0.15s ease; }
+    .model:active .stage img { transform: translateY(-4px) scale(1.03); }
+    .plank { width: 100%; height: 20px; background: linear-gradient(180deg, #b9a3e6 0, #9a7fd8 40%, #7b5fc0 100%); box-shadow: 0 10px 12px -6px rgba(60, 30, 110, 0.4); }
+    .price-tag { margin-top: 10px; display: flex; gap: 6px; align-items: center; font: 800 1.15rem/1 var(--font-fun); background: #fff; border: 2px solid #e2d6fb; border-radius: 999px; padding: 6px 14px 4px; color: var(--ink); }
+    .price-tag small { font-weight: 700; color: var(--ink-soft); font-size: 0.85rem; }
+    .model .name { margin-top: 6px; font: 700 1.05rem/1.15 var(--font-fun); text-align: center; padding: 0 8px; }
+    .model.spacer { pointer-events: none; }
+
+    .mine { max-width: 1100px; margin: 26px auto 0; }
+    .mine h2 { font: 800 1.6rem/1 var(--font-fun); margin: 0 0 12px; }
+    .mine-list { display: flex; gap: 12px; overflow-x: auto; padding-bottom: 6px; }
+    .mine-card { flex: none; width: 150px; background: var(--paper); border-radius: 20px; padding: 10px; box-shadow: var(--shadow); text-align: center; font-family: var(--font-fun); }
+    .mine-card img { width: 100%; aspect-ratio: 1; object-fit: contain; }
+    .mine-card .st { font-weight: 800; font-size: 1.05rem; }
+    .mine-card .sws { display: flex; justify-content: center; gap: 4px; margin: 4px 0; }
+    .mine-card .sws i { width: 16px; height: 16px; border-radius: 50%; border: 2px solid #fff; box-shadow: 0 0 0 1px rgba(0,0,0,0.15); }
+
+    /* Workbench: spin + color */
+    .bench { position: fixed; inset: 0; z-index: 30; background: linear-gradient(180deg, #f3ecff 0%, var(--cream) 100%);
+      display: grid; grid-template-columns: minmax(0, 1.1fr) minmax(0, 1fr); gap: 10px;
+      padding: max(14px, env(safe-area-inset-top)) max(16px, env(safe-area-inset-right)) max(14px, env(safe-area-inset-bottom)) max(16px, env(safe-area-inset-left)); }
+    .bench[hidden] { display: none; }
+    .bench .view { position: relative; min-height: 0; display: flex; flex-direction: column; }
+    .bench canvas { flex: 1; width: 100%; min-height: 0; touch-action: none; cursor: grab; }
+    .bench .hint { text-align: center; font: 700 1.1rem/1 var(--font-fun); color: var(--ink-soft); margin: 4px 0 0; }
+    .bench .side { display: flex; flex-direction: column; gap: 12px; min-height: 0; padding: 4px; }
+    .bench .slots-scroll { flex: 1; min-height: 0; overflow-y: auto; display: grid; gap: 12px; align-content: start; padding: 2px 2px 6px; }
+    .bench .foot { display: grid; gap: 10px; }
+    .bench h2 { font: 800 2rem/1.05 var(--font-fun); margin: 0; }
+    .slot-pick { background: var(--paper); border-radius: 22px; padding: 12px 14px; box-shadow: 0 4px 0 rgba(43, 33, 64, 0.08); }
+    .slot-pick .lbl { font: 800 1.2rem/1 var(--font-fun); margin-bottom: 10px; display: flex; align-items: center; gap: 8px; }
+    .swatches { display: flex; flex-wrap: wrap; gap: 8px; }
+    .swatch { width: 52px; height: 52px; border-radius: 50%; border: 4px solid #fff; box-shadow: 0 0 0 2px rgba(0, 0, 0, 0.12), 0 3px 0 rgba(0, 0, 0, 0.12); padding: 0; transition: transform 0.12s ease; }
+    .swatch[aria-pressed='true'] { box-shadow: 0 0 0 4px var(--ink), 0 3px 0 rgba(0, 0, 0, 0.12); transform: scale(1.08); }
+    .bench-bar { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
+    .bench-bar .grow { flex: 1; }
+    .fun-btn { border: 0; border-radius: 20px; padding: 12px 18px 8px; font: 800 1.3rem/1 var(--font-fun); background: var(--paper); box-shadow: 0 4px 0 rgba(43, 33, 64, 0.15); }
+    .spend { border: 0; border-radius: 22px; padding: 16px 22px 12px; font: 800 1.6rem/1 var(--font-fun); background: var(--green); color: #fff; box-shadow: 0 5px 0 var(--green-deep); width: 100%; }
+    .spend:disabled { background: #b9b2c7; box-shadow: 0 5px 0 #8f879f; }
+    .price-now { font: 800 1.4rem/1.1 var(--font-fun); }
+    .price-now small { display: block; font-size: 0.95rem; color: var(--ink-soft); }
+    .close-x { position: absolute; top: 0; left: 0; z-index: 2; }
+    @media (max-width: 760px), (orientation: portrait) and (max-width: 900px) {
+      .bench { grid-template-columns: 1fr; grid-template-rows: minmax(0, 46vh) minmax(0, 1fr); }
+    }
+
+    .confirm { border: 0; border-radius: 30px; padding: 26px; width: min(460px, calc(100vw - 32px)); text-align: center; font-family: var(--font-fun); }
+    .confirm img { width: 180px; height: 180px; object-fit: contain; margin: 0 auto; }
+    .confirm h3 { font: 800 1.8rem/1.15 var(--font-fun); margin: 8px 0 18px; }
+    .confirm .row { display: flex; gap: 12px; }
+    .confirm .row button { flex: 1; }
+    .confetti { position: fixed; inset: 0; pointer-events: none; z-index: 60; overflow: hidden; }
+    .confetti i { position: absolute; top: -20px; width: 12px; height: 18px; border-radius: 3px; animation: drop 2.4s ease-in forwards; }
+    @keyframes drop { to { transform: translateY(110vh) rotate(720deg); } }
+    @media (prefers-reduced-motion: reduce) { .confetti { display: none; } .gear { animation: none !important; } }
+  </style>
+</head>
+<body class="kid print-app">
+  <header class="workshop band" id="workshop">
+    <svg class="gear g1 spin" viewBox="0 0 100 100" aria-hidden="true"><path fill="#fff" d="M43 4h14l2 12 9 4 10-7 10 10-7 10 4 9 12 2v14l-12 2-4 9 7 10-10 10-10-7-9 4-2 12H43l-2-12-9-4-10 7-10-10 7-10-4-9-12-2V43l12-2 4-9-7-10 10-10 10 7 9-4zM50 34a16 16 0 100 32 16 16 0 000-32z"/></svg>
+    <svg class="gear g2 spin" viewBox="0 0 100 100" aria-hidden="true"><path fill="#fff" d="M43 4h14l2 12 9 4 10-7 10 10-7 10 4 9 12 2v14l-12 2-4 9 7 10-10 10-10-7-9 4-2 12H43l-2-12-9-4-10 7-10-10 7-10-4-9-12-2V43l12-2 4-9-7-10 10-10 10 7 9-4zM50 34a16 16 0 100 32 16 16 0 000-32z"/></svg>
+    <div class="ws-row">
+      <a class="back-btn" href="/">↩ Back</a>
+      <h1 class="wordmark" id="title">Print Shop</h1>
+      <span class="stars stars-big" id="balance" aria-live="polite">⭐ …</span>
+    </div>
+    <svg class="edge" viewBox="0 0 1200 70" preserveAspectRatio="none" aria-hidden="true">
+      <path d="M0 30 C120 50 240 10 360 26 C480 42 600 14 720 28 C840 42 960 16 1080 30 C1140 36 1170 30 1200 26 L1200 70 L0 70 Z" fill="#f6f0ff"/>
+    </svg>
+  </header>
+
+  <div class="wall"><main class="models" id="models"><p class="empty">Loading…</p></main></div>
+
+  <section class="mine" id="mine" hidden>
+    <h2>My prints</h2>
+    <div class="mine-list" id="mine-list"></div>
+  </section>
+
+  <section class="bench" id="bench" hidden aria-label="Choose colors">
+    <div class="view">
+      <button class="back-btn close-x" id="bench-close" type="button">↩ Back</button>
+      <canvas id="bench-canvas" aria-label="3D model — drag to spin"></canvas>
+      <p class="hint">👆 Drag to spin it!</p>
+    </div>
+    <div class="side">
+      <h2 id="bench-title"></h2>
+      <div class="slots-scroll" id="bench-slots"></div>
+      <div class="foot">
+      <div class="bench-bar">
+        <button class="fun-btn" id="surprise" type="button">🎲 Surprise me</button>
+        <div class="grow"></div>
+        <div class="price-now" id="price-now"></div>
+      </div>
+      <button class="spend" id="spend" type="button"></button>
+      </div>
+    </div>
+  </section>
+
+  <dialog class="confirm" id="confirm">
+    <img id="confirm-img" alt="">
+    <h3 id="confirm-text"></h3>
+    <div class="row">
+      <button class="fun-btn" id="confirm-no" type="button">Not yet</button>
+      <button class="spend" id="confirm-yes" type="button" style="width:auto">Yes!</button>
+    </div>
+  </dialog>
+
+  <script type="module">
+    import { kidApi, esc, session, store, watchForUpdates } from '/shared/api.js';
+    import { setWordmark } from '/shared/whimsy.js';
+    watchForUpdates();
+
+    const $ = (id) => document.getElementById(id);
+    const kidId = new URLSearchParams(location.search).get('kid') || session.get('kh.kidId');
+    if (!kidId) location.href = '/';
+    setWordmark($('title'), 'Print Shop', { colors: ['#ffffff', '#ffd84a', '#b8f0c8', '#ffffff', '#ffb3d1'] });
+
+    let data = null;
+    let current = null;       // model on the bench
+    let picks = {};           // extruder → filament id
+    let viewer = null;
+    const STATUS = { requested: '🕐 Waiting', printing: '🖨️ Printing!', done: '✅ Ready!', refunded: '↩️ Stars back' };
+
+    const filament = (id) => data.filaments.find((f) => f.id === id);
+    const rgb = (h) => [1, 3, 5].map((i) => parseInt(h.slice(i, i + 2), 16));
+    function nearestFilament(hex) {
+      const [r, g, b] = rgb(hex);
+      let best = data.filaments[0]; let bd = Infinity;
+      for (const f of data.filaments) {
+        const [r2, g2, b2] = rgb(f.hex);
+        const d = (r - r2) ** 2 * 0.3 + (g - g2) ** 2 * 0.59 + (b - b2) ** 2 * 0.11;
+        if (d < bd) { bd = d; best = f; }
+      }
+      return best;
+    }
+    const priceOf = (m) => {
+      const multi = new Set(m.slots.map((s) => picks[s.extruder])).size > 1;
+      return { multi, cost: multi ? m.price_multi : m.price_single };
+    };
+
+    function renderShelf() {
+      $('balance').textContent = `⭐ ${data.balance}`;
+      const grid = $('models');
+      grid.innerHTML = data.models.length ? data.models.map((m) => `
+        <button class="model" type="button" data-id="${esc(m.id)}" aria-label="${esc(m.title)}">
+          <div class="stage"><img src="${esc(m.thumb)}" alt="" loading="lazy"></div>
+          <div class="plank" aria-hidden="true"></div>
+          <div class="price-tag">⭐ ${m.price_single}${m.price_multi !== m.price_single && m.slots.length > 1 ? ` <small>· ${m.price_multi} mixed</small>` : ''}</div>
+          <div class="name">${esc(m.title)}</div>
+        </button>`).join('')
+        : '<p class="empty" style="grid-column:1/-1">The printer elves are still setting up. Check back soon!</p>';
+      // Pad the last shelf.
+      const cols = getComputedStyle(grid).gridTemplateColumns.split(' ').length;
+      const missing = data.models.length ? (cols - (data.models.length % cols)) % cols : 0;
+      for (let i = 0; i < missing; i++) grid.insertAdjacentHTML('beforeend', '<div class="model spacer" aria-hidden="true"><div class="stage"><div style="aspect-ratio:1"></div></div><div class="plank"></div></div>');
+
+      $('mine').hidden = !data.requests.length;
+      $('mine-list').innerHTML = data.requests.map((r) => `
+        <div class="mine-card">
+          <img src="${esc(r.thumb)}" alt="">
+          <div class="sws">${r.colors.map((c) => `<i style="background:${esc(c.hex)}"></i>`).join('')}</div>
+          <div class="st">${STATUS[r.status]}</div>
+        </div>`).join('');
+    }
+
+    function renderBench() {
+      const m = current;
+      $('bench-title').textContent = m.title;
+      $('bench-slots').innerHTML = m.slots.map((s) => `
+        <div class="slot-pick">
+          <div class="lbl">${esc(s.name)}</div>
+          <div class="swatches">${data.filaments.map((f) => `
+            <button class="swatch" type="button" style="background:${esc(f.hex)}" data-ex="${s.extruder}" data-f="${esc(f.id)}"
+              aria-pressed="${picks[s.extruder] === f.id}" aria-label="${esc(f.name)}" title="${esc(f.name)}"></button>`).join('')}
+          </div>
+        </div>`).join('');
+      const { multi, cost } = priceOf(m);
+      $('price-now').innerHTML = `⭐ ${cost}<small>${m.slots.length > 1 ? (multi ? 'Mixed colors' : 'One color') : ''}</small>`;
+      const short = cost - data.balance;
+      $('spend').disabled = short > 0;
+      $('spend').textContent = short > 0 ? `Need ${short} more ⭐` : `Spend ⭐ ${cost}`;
+      viewer?.setColors(Object.fromEntries(m.slots.map((s) => [s.extruder, filament(picks[s.extruder])?.hex || '#cccccc'])));
+    }
+
+    async function openBench(m) {
+      current = m;
+      picks = Object.fromEntries(m.slots.map((s) => [s.extruder, nearestFilament(s.hex)?.id]));
+      $('bench').hidden = false;
+      document.body.style.overflow = 'hidden';
+      renderBench();
+      try {
+        const { ModelViewer } = await import('/shared/model-viewer.js');
+        viewer?.destroy();
+        viewer = new ModelViewer($('bench-canvas'));
+        await viewer.load(m.preview);
+        renderBench();
+      } catch (err) {
+        $('bench-canvas').replaceWith(Object.assign(document.createElement('img'), { src: m.thumb, alt: '', style: 'width:100%;flex:1;object-fit:contain;min-height:0' }));
+      }
+    }
+    function closeBench() {
+      $('bench').hidden = true;
+      document.body.style.overflow = '';
+      viewer?.destroy(); viewer = null;
+      if (!$('bench-canvas')) $('bench').querySelector('.view img')?.replaceWith(Object.assign(document.createElement('canvas'), { id: 'bench-canvas' }));
+    }
+
+    function confetti() {
+      const box = document.createElement('div');
+      box.className = 'confetti';
+      const cols = ['#e4483f', '#f5b82e', '#2e9b6a', '#4f8fe8', '#8a5cd6', '#ff8fc7'];
+      for (let i = 0; i < 70; i++) {
+        const c = document.createElement('i');
+        c.style.cssText = `left:${Math.random() * 100}%;background:${cols[i % cols.length]};animation-delay:${Math.random() * 0.6}s;animation-duration:${1.8 + Math.random()}s`;
+        box.append(c);
+      }
+      document.body.append(box);
+      setTimeout(() => box.remove(), 3500);
+    }
+
+    $('models').addEventListener('click', (e) => {
+      const b = e.target.closest('.model[data-id]');
+      if (b) openBench(data.models.find((m) => m.id === b.dataset.id));
+    });
+    $('bench-close').addEventListener('click', closeBench);
+    $('bench-slots').addEventListener('click', (e) => {
+      const sw = e.target.closest('.swatch');
+      if (!sw) return;
+      picks[sw.dataset.ex] = sw.dataset.f;
+      renderBench();
+    });
+    $('surprise').addEventListener('click', () => {
+      for (const s of current.slots) picks[s.extruder] = data.filaments[Math.floor(Math.random() * data.filaments.length)].id;
+      renderBench();
+    });
+    $('spend').addEventListener('click', () => {
+      const { cost } = priceOf(current);
+      $('confirm-img').src = current.thumb;
+      $('confirm-text').textContent = `Spend ${cost} stars on ${current.title}?`;
+      $('confirm').showModal();
+    });
+    $('confirm-no').addEventListener('click', () => $('confirm').close());
+    $('confirm-yes').addEventListener('click', async () => {
+      const btn = $('confirm-yes');
+      btn.disabled = true;
+      try {
+        const res = await kidApi('/print-requests', { method: 'POST', body: { kid_id: kidId, model_id: current.id, colors: picks } });
+        $('confirm').close();
+        data.balance = res.balance;
+        confetti();
+        $('confirm-text').textContent = 'Yay! A grown-up will print it soon!';
+        closeBench();
+        await load();
+        $('mine').scrollIntoView({ behavior: 'smooth', block: 'center' });
+      } catch (err) {
+        $('confirm-text').textContent = err.message;
+      } finally {
+        btn.disabled = false;
+      }
+    });
+    let resizeTimer;
+    addEventListener('resize', () => { clearTimeout(resizeTimer); resizeTimer = setTimeout(() => data && renderShelf(), 150); });
+
+    const cacheKey = `kh.cache.print.${kidId}`;
+    try { const c = JSON.parse(store.get(cacheKey) || 'null'); if (c?.models) { data = c; renderShelf(); } } catch { /* ignore */ }
+    async function load() {
+      try {
+        data = await kidApi(`/print-shop?kid=${encodeURIComponent(kidId)}`);
+        store.set(cacheKey, JSON.stringify(data));
+        session.set('kh.kidId', kidId);
+        renderShelf();
+      } catch (err) {
+        if (!data) $('models').innerHTML = `<p class="empty">${esc(err.message)}</p>`;
+      }
+    }
+    load();
+    document.addEventListener('visibilitychange', () => { if (!document.hidden && $('bench').hidden) load(); });
+  </script>
+</body>
+</html>

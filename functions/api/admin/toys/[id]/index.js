@@ -1,5 +1,6 @@
 // PATCH  /api/admin/toys/:id  { title?, category?, status?, sort?, source_url? }
 // DELETE /api/admin/toys/:id  → removes the toy, its images and any wish-list entries
+import { clearAudienceStmt } from '../../../../../lib/audience.js';
 import { getToyRow, requireCategory, shapeToy } from '../../../../../lib/catalog.js';
 import { parseUrl } from '../../../../../lib/fetch-product.js';
 import { HttpError, json, readJson, requireInt, requireString } from '../../../../../lib/http.js';
@@ -35,6 +36,7 @@ export async function onRequestDelete({ env, params }) {
   const toy = await getToyRow(env.DB, params.id);
   await env.DB.batch([
     env.DB.prepare('DELETE FROM wishlist WHERE toy_id = ?').bind(toy.id),
+    clearAudienceStmt(env.DB, 'toy', toy.id),
     env.DB.prepare('DELETE FROM toys WHERE id = ?').bind(toy.id),
   ]);
   await deleteImages(env, toy.source_key, toy.stylized_key, toy.coloring_key, toy.cutout_key);

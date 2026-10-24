@@ -1,6 +1,7 @@
 // POST   /api/kid/wishlist  { kid_id, toy_id }  → add (up to WISHLIST_MAX)
 // DELETE /api/kid/wishlist  { kid_id, toy_id }  → remove
 // Rows a grown-up marked as bought are only hidden (removed_at), so the purchase isn't lost.
+import { visibleBinds, visibleSql } from '../../../lib/audience.js';
 import { WISHLIST_MAX } from '../../../lib/catalog.js';
 import { HttpError, json, readJson, requireString } from '../../../lib/http.js';
 import { requireOwnKid } from '../../../lib/kid-access.js';
@@ -21,7 +22,8 @@ async function listFor(env, kidId) {
 
 export async function onRequestPost({ request, env, data }) {
   const { kid, toyId } = await parse(request, env, data.device);
-  const toy = await env.DB.prepare(`SELECT id FROM toys WHERE id = ? AND status = 'approved'`).bind(toyId).first();
+  const toy = await env.DB.prepare(`SELECT t.id FROM toys t WHERE t.id = ? AND t.status = 'approved' AND ${visibleSql('t')}`)
+    .bind(toyId, ...visibleBinds('toy', kid)).first();
   if (!toy) throw new HttpError(404, 'Toy not found');
 
   // Insert only while the list has room (single statement, so double-taps can't overfill it).

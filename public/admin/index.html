@@ -26,12 +26,33 @@
       <button role="tab" data-tab="kids">Kids</button>
       <button role="tab" data-tab="catalog">Catalog</button>
       <button role="tab" data-tab="shopping">Shopping</button>
+      <button role="tab" data-tab="print">Print Shop</button>
       <button role="tab" data-tab="tablets">Tablets</button>
       <button role="tab" data-tab="grownups">Grown-ups</button>
     </nav>
   </header>
 
   <main class="gu" id="main"><p class="muted">Loading…</p></main>
+
+  <dialog id="aud-dialog" class="aud">
+    <form method="dialog" id="aud-form">
+      <h2 style="margin:0">Who sees this?</h2>
+      <p class="muted" style="margin:0" id="aud-item"></p>
+      <label class="row aud-everyone"><input type="checkbox" id="aud-all"> <strong>Everyone</strong></label>
+      <div id="aud-groups"></div>
+      <div class="row" style="justify-content:flex-end">
+        <button class="btn" value="cancel" formnovalidate>Cancel</button>
+        <button class="btn primary" value="save">Save</button>
+      </div>
+    </form>
+  </dialog>
+
+  <dialog id="model-dialog" class="zoom">
+    <form method="dialog">
+      <div class="zoom-frame checker"><canvas id="model-canvas" style="width:100%;aspect-ratio:1;display:block"></canvas></div>
+      <div class="row" style="justify-content:space-between"><strong id="model-dialog-title"></strong><button class="btn">Close</button></div>
+    </form>
+  </dialog>
 
   <dialog id="zoom" class="zoom">
     <form method="dialog">
@@ -148,7 +169,7 @@
 
     function render() {
       if (!state.households.length) return renderSetup();
-      ({ tokens: renderTokens, kids: renderKids, catalog: renderCatalog, shopping: renderShopping, tablets: renderTablets, grownups: renderGrownups })[state.tab]();
+      ({ tokens: renderTokens, kids: renderKids, catalog: renderCatalog, shopping: renderShopping, print: renderPrintShop, tablets: renderTablets, grownups: renderGrownups })[state.tab]();
     }
 
     // ---------- first run ----------
@@ -392,6 +413,60 @@
       render();
     }));
 
+    // ---------- who sees it (toys & models) ----------
+    function audienceLabel(aud) {
+      if (!aud || (!aud.households.length && !aud.kids.length)) return 'Everyone';
+      const names = [
+        ...aud.households.map((h) => state.households.find((x) => x.id === h)?.name || 'family'),
+        ...aud.kids.map((k) => state.kids.find((x) => x.id === k)?.name || 'kid'),
+      ];
+      return names.length > 2 ? `${names.slice(0, 2).join(', ')} +${names.length - 2}` : names.join(', ');
+    }
+    const audienceChip = (aud) => `<button type="button" class="chip aud-chip ${aud ? 'limited' : ''}" data-aud>👪 ${esc(audienceLabel(aud))}</button>`;
+
+    /** Opens the picker; resolves after saving (or null on cancel). */
+    function openAudience(type, id, title, aud) {
+      const dlg = $('#aud-dialog');
+      const form = $('#aud-form');
+      const all = $('#aud-all');
+      $('#aud-item').textContent = title;
+      const selH = new Set(aud?.households || []);
+      const selK = new Set(aud?.kids || []);
+      all.checked = !selH.size && !selK.size;
+      $('#aud-groups').innerHTML = state.households.map((h) => `
+        <fieldset class="aud-group">
+          <label class="row"><input type="checkbox" data-h="${esc(h.id)}" ${selH.has(h.id) ? 'checked' : ''}> <strong>${esc(h.name)}</strong> <span class="muted">whole family</span></label>
+          <div class="row" style="padding-left:26px;gap:12px">
+            ${state.kids.filter((k) => k.household_id === h.id && k.active).map((k) => `
+              <label class="row" style="gap:6px"><input type="checkbox" data-k="${esc(k.id)}" ${selK.has(k.id) ? 'checked' : ''}> ${esc(k.name)}</label>`).join('') || '<span class="muted">No kids</span>'}
+          </div>
+        </fieldset>`).join('');
+      const sync = () => {
+        const any = form.querySelectorAll('[data-h]:checked, [data-k]:checked').length > 0;
+        if (any) all.checked = false;
+      };
+      form.querySelectorAll('[data-h], [data-k]').forEach((cb) => cb.addEventListener('change', sync));
+      all.onchange = () => { if (all.checked) form.querySelectorAll('[data-h], [data-k]').forEach((cb) => { cb.checked = false; }); };
+      return new Promise((resolve) => {
+        const onSubmit = (e) => {
+          if (e.submitter?.value !== 'save') return;
+          e.preventDefault();
+          const households = [...form.querySelectorAll('[data-h]:checked')].map((x) => x.dataset.h);
+          const kids = [...form.querySelectorAll('[data-k]:checked')].map((x) => x.dataset.k);
+          if (!all.checked && !households.length && !kids.length) { toast('Pick at least one family or kid, or Everyone', true); return; }
+          run(async () => {
+            await adminApi('/audience', { method: 'PUT', body: { item_type: type, item_id: id, households, kids } });
+            dlg.close();
+            toast('Saved');
+            resolve(true);
+          });
+        };
+        form.addEventListener('submit', onSubmit);
+        dlg.addEventListener('close', () => { form.removeEventListener('submit', onSubmit); resolve(null); }, { once: true });
+        dlg.showModal();
+      });
+    }
+
     // ---------- catalog ----------
     const generating = new Map();   // toyId → 'stylized' | 'cutout' | 'coloring'
     const cutoutIssues = new Map(); // toyId → { reason, blob } when a cutout looked wrong
@@ -493,6 +568,7 @@
               <input class="grow compact" data-field="title" value="${esc(t.title)}" maxlength="80" aria-label="Toy name">
               <select class="compact" data-field="category" aria-label="Category">${categoryOptions(t.category)}</select>
             </div>
+            <div>${audienceChip(t.audience)}</div>
             <div class="toy-row-status">${t.gen_error
               ? (isBlocked(t.gen_error)
                 ? `<span class="warn">⚠ Gemini won’t draw this one (characters and brands are often blocked).</span>
@@ -520,6 +596,7 @@
           <div class="main">
             <div class="toy-line-title">${esc(t.title)}</div>
             <div class="meta">${esc(categoryIcon(t.category))} ${t.cutout ? '' : '· no cutout'}${cutoutIssues.has(t.id) ? ' · ⚠ cutout needs a look' : ''}</div>
+            <div style="margin-top:4px">${audienceChip(t.audience)}</div>
           </div>
           ${!t.cutout && !busy ? '<button class="btn small" data-act="redo-cutout">Cut out</button>' : ''}
           <button class="btn small" data-act="to-draft">Edit</button>
@@ -648,6 +725,12 @@
         });
       }));
 
+      main.querySelectorAll('[data-aud]').forEach((b) => b.addEventListener('click', async () => {
+        const id = toyOf(b);
+        const t = catalog.toys.find((x) => x.id === id);
+        if (await openAudience('toy', id, t.title, t.audience)) { await loadCatalog(); renderCatalog(false); }
+      }));
+
       main.querySelectorAll('[data-zoom]').forEach((b) => b.addEventListener('click', () => {
         $('#zoom-img').src = b.dataset.zoom;
         $('#zoom-img').parentElement.classList.toggle('checker', b.dataset.checker === '1');
@@ -759,6 +842,285 @@
           toast('Link saved');
           renderShopping();
         });
+      }));
+    }
+
+    // ---------- print shop ----------
+    let printTab = 'queue';
+    let ps = { models: [], filaments: [], requests: [], showAll: false };
+    const STATUS_LABEL = { requested: '🕐 Waiting', printing: '🖨️ Printing', done: '✅ Done', refunded: '↩️ Refunded' };
+
+    async function loadPrintShop() {
+      const [m, f, r] = await Promise.all([
+        adminApi('/models'), adminApi('/filaments'), adminApi(`/print-requests?status=${ps.showAll ? 'all' : 'open'}`),
+      ]);
+      ps = { ...ps, models: m.models, filaments: f.filaments, requests: r.requests };
+    }
+
+    async function renderPrintShop(fetch = true) {
+      if (fetch) {
+        main.innerHTML = '<p class="muted">Loading…</p>';
+        try { await loadPrintShop(); } catch (err) { main.innerHTML = `<p>${esc(err.message)}</p>`; return; }
+      }
+      const open = ps.requests.filter((r) => r.status === 'requested' || r.status === 'printing').length;
+      main.innerHTML = `
+        <div class="seg" role="tablist">
+          <button data-ptab="queue" aria-selected="${printTab === 'queue'}">Queue ${open ? `<span class="pill">${open}</span>` : ''}</button>
+          <button data-ptab="models" aria-selected="${printTab === 'models'}">Models <span class="muted">${ps.models.length}</span></button>
+          <button data-ptab="filaments" aria-selected="${printTab === 'filaments'}">Filaments <span class="muted">${ps.filaments.filter((f) => f.in_stock).length}</span></button>
+        </div>
+        <div id="ps-body"></div>`;
+      main.querySelectorAll('[data-ptab]').forEach((b) => b.addEventListener('click', () => { printTab = b.dataset.ptab; renderPrintShop(false); }));
+      ({ queue: renderQueue, models: renderModels, filaments: renderFilaments })[printTab]($('#ps-body'));
+    }
+
+    // Queue -----------------------------------------------------------------
+    function renderQueue(box) {
+      const reqs = ps.requests;
+      box.innerHTML = `
+        <div class="card">
+          <div class="row" style="justify-content:space-between;margin-bottom:6px">
+            <h2 style="margin:0">${ps.showAll ? 'All requests' : 'To print'}</h2>
+            <button class="btn small" id="q-toggle">${ps.showAll ? 'Show open only' : 'Show history'}</button>
+          </div>
+          <ul class="list">
+            ${reqs.length ? reqs.map((r) => `
+              <li class="req" data-id="${esc(r.id)}">
+                ${r.thumb ? `<img class="shop-thumb checker" src="${esc(r.thumb)}" alt="">` : '<span class="shop-thumb"></span>'}
+                <div class="main">
+                  <div><strong>${esc(r.model_title)}</strong> for <strong>${esc(r.kid_name)}</strong> <span class="muted">· ${esc(r.household_name)}</span></div>
+                  <div class="req-colors">${r.colors.map((c) => `<span><i class="sw" style="background:${esc(c.hex)}"></i>${esc(c.slot)}: ${esc(c.name)} <span class="muted">(E${c.extruder})</span></span>`).join('')}</div>
+                  <div class="meta">⭐ ${r.cost} · ${r.multi ? 'multi-color' : 'single color'} · ${esc(when(r.created_at))} · ${STATUS_LABEL[r.status]}${r.refund_reason ? ` (${esc(r.refund_reason)})` : ''}</div>
+                  <div class="row" style="gap:6px;margin-top:6px">
+                    <a class="btn small" href="/api/admin/models/${esc(r.model_id)}/file">Download .3mf</a>
+                    ${r.status === 'requested' ? '<button class="btn small" data-rs="printing">Start printing</button>' : ''}
+                    ${r.status === 'requested' || r.status === 'printing' ? '<button class="btn small primary" data-rs="done">Done</button>' : ''}
+                    ${r.status !== 'refunded' ? '<button class="btn small danger" data-rs="refunded">Refund</button>' : ''}
+                  </div>
+                </div>
+              </li>`).join('') : `<li class="muted">${ps.showAll ? 'No requests yet.' : 'Nothing to print. 🎉'}</li>`}
+          </ul>
+        </div>`;
+      $('#q-toggle').addEventListener('click', () => { ps.showAll = !ps.showAll; renderPrintShop(); });
+      box.querySelectorAll('[data-rs]').forEach((b) => b.addEventListener('click', () => {
+        const id = b.closest('[data-id]').dataset.id;
+        const status = b.dataset.rs;
+        let reason;
+        if (status === 'refunded') {
+          reason = prompt('Why are you refunding it? (shown to grown-ups only)', 'Couldn’t print it');
+          if (reason === null) return;
+        }
+        run(async () => {
+          await adminApi(`/print-requests/${id}`, { method: 'PATCH', body: { status, reason } });
+          toast(status === 'refunded' ? 'Stars given back' : status === 'done' ? 'Marked done' : 'Printing');
+          renderPrintShop();
+        });
+      }));
+    }
+
+    // Filaments ---------------------------------------------------------------
+    function renderFilaments(box) {
+      box.innerHTML = `
+        <div class="card">
+          <h2>Add a filament</h2>
+          <form id="fil-form" class="row">
+            <input type="color" name="hex" value="#FFD84A" aria-label="Color">
+            <input class="grow" name="name" placeholder="Name, e.g. Pikachu Yellow" maxlength="40" required>
+            <input name="material" placeholder="PLA" maxlength="20" style="width:80px">
+            <button class="btn primary">Add</button>
+          </form>
+        </div>
+        <div class="card">
+          <h2>Your spools</h2>
+          <p class="muted" style="margin:0 0 8px">Kids only see colors marked in stock.</p>
+          <ul class="list">
+            ${ps.filaments.map((f) => `
+              <li data-id="${esc(f.id)}">
+                <input type="color" value="${esc(f.hex)}" data-ff="hex" aria-label="Color of ${esc(f.name)}">
+                <div class="main"><input class="compact" value="${esc(f.name)}" data-ff="name" maxlength="40" style="width:100%"></div>
+                <span class="muted" style="font-size:0.8rem">${esc(f.material)}</span>
+                <button class="chip ${f.in_stock ? '' : 'off'}" data-stock aria-pressed="${f.in_stock}" style="padding:3px 10px">${f.in_stock ? 'In stock' : 'Out'}</button>
+                <button class="btn small danger" data-del aria-label="Delete ${esc(f.name)}">✕</button>
+              </li>`).join('') || '<li class="muted">No filaments yet.</li>'}
+          </ul>
+        </div>`;
+      $('#fil-form').addEventListener('submit', (e) => {
+        e.preventDefault();
+        const f = e.target.elements;
+        run(async () => {
+          await adminApi('/filaments', { method: 'POST', body: { name: f.name.value, hex: f.hex.value, material: f.material.value || 'PLA' } });
+          await loadPrintShop(); renderPrintShop(false);
+        });
+      });
+      box.querySelectorAll('[data-ff]').forEach((el) => el.addEventListener('change', () => run(async () => {
+        await adminApi(`/filaments/${el.closest('[data-id]').dataset.id}`, { method: 'PATCH', body: { [el.dataset.ff]: el.value } });
+        await loadPrintShop(); toast('Saved');
+      })));
+      box.querySelectorAll('[data-stock]').forEach((b) => b.addEventListener('click', () => run(async () => {
+        await adminApi(`/filaments/${b.closest('[data-id]').dataset.id}`, { method: 'PATCH', body: { in_stock: b.getAttribute('aria-pressed') !== 'true' } });
+        await loadPrintShop(); renderPrintShop(false);
+      })));
+      box.querySelectorAll('[data-del]').forEach((b) => b.addEventListener('click', () => {
+        if (!confirm('Delete this filament? Past requests keep their colors.')) return;
+        run(async () => { await adminApi(`/filaments/${b.closest('[data-id]').dataset.id}`, { method: 'DELETE' }); await loadPrintShop(); renderPrintShop(false); });
+      }));
+    }
+
+    // Models --------------------------------------------------------------------
+    const intake = new Map(); // model id or 'new' → status text
+
+    async function processModelFile(file) {
+      const tmp = `new-${Date.now()}`;
+      const say = (t) => { intake.set(tmp, t); if (state.tab === 'print' && printTab === 'models') renderPrintShop(false); };
+      try {
+        say(`Reading ${file.name}…`);
+        const { parseProject, slotsFrom, sizeOf, buildPreview } = await import('/shared/threemf.js');
+        const proj = await parseProject(await file.arrayBuffer());
+        const slots = slotsFrom(proj);
+        if (slots.length > 5) throw new Error('More than 5 colors — the MMU3 has 5');
+        const size = sizeOf(proj);
+        say('Making the tablet version…');
+        const preview = await buildPreview(proj);
+        say(`Uploading ${(file.size / 1048576).toFixed(1)} MB…`);
+        const { model } = await adminApi(`/models?name=${encodeURIComponent(file.name)}`, { method: 'POST', body: new Blob([file], { type: 'model/3mf' }) });
+        await adminApi(`/models/${model.id}/asset?kind=preview`, { method: 'POST', body: new Blob([preview.bytes], { type: 'application/octet-stream' }) });
+        say('Taking its picture…');
+        const thumb = await renderThumb(preview.bytes.buffer, Object.fromEntries(slots.map((s) => [s.extruder, s.hex])));
+        await adminApi(`/models/${model.id}/asset?kind=thumb`, { method: 'POST', body: thumb });
+        await adminApi(`/models/${model.id}`, { method: 'PATCH', body: { slots, size_mm: size, ...(proj.title ? { title: proj.title.replace(/[-_]+/g, ' ').replace(/\s+v?\d+(\.\d+)*$/i, '').slice(0, 60) } : {}) } });
+        intake.delete(tmp);
+        toast(`${file.name} added — name the colors and set prices`);
+      } catch (err) {
+        intake.delete(tmp);
+        toast(err.message, true);
+      }
+      await loadPrintShop();
+      if (state.tab === 'print') renderPrintShop(false);
+    }
+
+    // Recolor the shop picture when a slot's preview color changes.
+    async function retakeThumb(m, slots) {
+      try {
+        const buf = await (await fetch(m.preview)).arrayBuffer();
+        const thumb = await renderThumb(buf, Object.fromEntries(slots.map((s) => [s.extruder, s.hex])));
+        await adminApi(`/models/${m.id}/asset?kind=thumb`, { method: 'POST', body: thumb });
+        await loadPrintShop();
+        if (state.tab === 'print' && printTab === 'models') renderPrintShop(false);
+      } catch (err) { toast(err.message, true); }
+    }
+
+    async function renderThumb(buffer, colors) {
+      const { ModelViewer } = await import('/shared/model-viewer.js');
+      const c = document.createElement('canvas');
+      c.width = c.height = 640;
+      const v = new ModelViewer(c, { autoRotate: false });
+      await v.load(buffer);
+      v.setColors(colors);
+      const blob = await v.snapshot('image/webp', 0.9);
+      v.destroy();
+      return blob;
+    }
+
+    let viewer3d = null;
+    async function openModelViewer(m) {
+      const dlg = $('#model-dialog');
+      $('#model-dialog-title').textContent = m.title;
+      dlg.showModal();
+      const { ModelViewer } = await import('/shared/model-viewer.js');
+      viewer3d?.destroy();
+      viewer3d = new ModelViewer($('#model-canvas'));
+      await viewer3d.load(m.preview);
+      viewer3d.setColors(Object.fromEntries(m.slots.map((s) => [s.extruder, s.hex])));
+    }
+
+    function modelRow(m) {
+      const used = m.requests ? ` · ${m.requests} request${m.requests > 1 ? 's' : ''}` : '';
+      return `
+        <li class="model-row" data-id="${esc(m.id)}">
+          <button type="button" class="thumb checker" data-view ${m.preview ? '' : 'disabled'} aria-label="Spin ${esc(m.title)}" style="width:84px;height:84px">
+            ${m.thumb ? `<img src="${esc(m.thumb)}" alt="">` : '<span class="thumb-busy">…</span>'}</button>
+          <div class="toy-row-main">
+            <div class="row" style="gap:6px">
+              <input class="grow compact" data-mf="title" value="${esc(m.title)}" maxlength="60" aria-label="Name">
+              ${m.status === 'approved' ? '<span class="pill">in shop</span>' : m.status === 'hidden' ? '<span class="pill off">hidden</span>' : '<span class="pill" style="background:#fff3cf;color:#7a5200">draft</span>'}
+            </div>
+            <input class="compact" data-mf="source_url" value="${esc(m.source_url || '')}" placeholder="Link (Printables, MakerWorld…)" type="url">
+            <div class="slots">
+              ${m.slots.map((s) => `
+                <label class="slot-ed" title="Extruder ${s.extruder}${s.share != null ? ` · ${Math.round(s.share * 100)}% of surface` : ''}">
+                  <input type="color" value="${esc(s.hex)}" data-slot-hex="${s.extruder}" aria-label="Preview color for extruder ${s.extruder}">
+                  <span class="muted">E${s.extruder}</span>
+                  <input class="compact" value="${esc(s.name)}" data-slot-name="${s.extruder}" maxlength="30" aria-label="Name for extruder ${s.extruder}">
+                </label>`).join('')}
+            </div>
+            <div class="row" style="gap:10px">
+              <label class="row" style="gap:6px">⭐ One color <input class="compact" type="number" min="0" max="999" data-mf="price_single" value="${m.price_single}" style="width:64px"></label>
+              <label class="row" style="gap:6px">⭐ Mixed <input class="compact" type="number" min="0" max="999" data-mf="price_multi" value="${m.price_multi}" style="width:64px"></label>
+              ${audienceChip(m.audience)}
+            </div>
+            <div class="meta">${m.size_mm ? `${m.size_mm.join(' × ')} mm` : ''}${used}${m.file_name ? ` · ${esc(m.file_name)}` : ''}</div>
+            <div class="row" style="gap:6px">
+              <a class="btn small" href="/api/admin/models/${esc(m.id)}/file">Download .3mf</a>
+              <span style="flex:1"></span>
+              ${m.status === 'approved' ? '<button class="btn small" data-ms="hidden">Hide</button>' : ''}
+              ${m.status === 'hidden' ? '<button class="btn small" data-ms="approved">Show</button>' : ''}
+              ${!m.requests ? '<button class="btn small danger" data-mdel>Delete</button>' : ''}
+              ${m.status === 'draft' ? `<button class="btn small primary" data-ms="approved" ${m.preview && m.thumb ? '' : 'disabled'}>Put in shop</button>` : ''}
+            </div>
+          </div>
+        </li>`;
+    }
+
+    function renderModels(box) {
+      box.innerHTML = `
+        <div class="card">
+          <h2>Add a model</h2>
+          <p class="muted" style="margin:0 0 10px">Set it up in PrusaSlicer (colors on extruders 1–5), then <strong>File → Save Project As</strong> and upload the .3mf here. Use a computer — it does the heavy lifting once so tablets don’t have to.</p>
+          <label class="btn primary">Choose .3mf project<input type="file" id="model-file" accept=".3mf" multiple hidden></label>
+          ${[...intake.values()].map((t) => `<p class="muted thumb-busy" style="margin:10px 0 0;font-size:0.9rem">${esc(t)}</p>`).join('')}
+        </div>
+        <div class="card">
+          <h2>Models</h2>
+          <ul class="list">${ps.models.map(modelRow).join('') || '<li class="muted">No models yet.</li>'}</ul>
+        </div>`;
+
+      $('#model-file').addEventListener('change', async (e) => {
+        const files = [...e.target.files];
+        e.target.value = '';
+        for (const f of files) await processModelFile(f);
+      });
+      const modelOf = (el) => ps.models.find((x) => x.id === el.closest('[data-id]').dataset.id);
+      const patchModel = (m, body, quiet) => run(async () => {
+        await adminApi(`/models/${m.id}`, { method: 'PATCH', body });
+        await loadPrintShop();
+        if (!quiet) renderPrintShop(false); else toast('Saved');
+      });
+      box.querySelectorAll('[data-mf]').forEach((el) => el.addEventListener('change', () => {
+        const v = el.type === 'number' ? Number(el.value) : el.value;
+        patchModel(modelOf(el), { [el.dataset.mf]: v }, true);
+      }));
+      const saveSlots = (el) => {
+        const m = modelOf(el);
+        const li = el.closest('[data-id]');
+        const slots = m.slots.map((s) => ({
+          ...s,
+          name: li.querySelector(`[data-slot-name="${s.extruder}"]`).value.trim() || s.name,
+          hex: li.querySelector(`[data-slot-hex="${s.extruder}"]`).value,
+        }));
+        patchModel(m, { slots }, true);
+        if (el.dataset.slotHex && m.preview) retakeThumb(m, slots);
+      };
+      box.querySelectorAll('[data-slot-name], [data-slot-hex]').forEach((el) => el.addEventListener('change', () => saveSlots(el)));
+      box.querySelectorAll('[data-ms]').forEach((b) => b.addEventListener('click', () => patchModel(modelOf(b), { status: b.dataset.ms })));
+      box.querySelectorAll('[data-mdel]').forEach((b) => b.addEventListener('click', () => {
+        const m = modelOf(b);
+        if (!confirm(`Delete ${m.title}?`)) return;
+        run(async () => { await adminApi(`/models/${m.id}`, { method: 'DELETE' }); await loadPrintShop(); renderPrintShop(false); });
+      }));
+      box.querySelectorAll('[data-view]').forEach((b) => b.addEventListener('click', () => openModelViewer(modelOf(b))));
+      box.querySelectorAll('[data-aud]').forEach((b) => b.addEventListener('click', async () => {
+        const m = modelOf(b);
+        if (await openAudience('model', m.id, m.title, m.audience)) { await loadPrintShop(); renderPrintShop(false); }
       }));
     }
 
