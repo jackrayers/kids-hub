@@ -478,3 +478,14 @@ input.compact, select.compact { padding: 6px 9px; font-size: 0.9rem; }
 .fil-two { display: inline-flex; align-items: center; gap: 6px; font-size: 0.85rem; color: var(--ink-soft); }
 .fil-two[hidden] { display: none; }
 .fil-sw { flex: none; display: inline-block; width: 30px; height: 30px; border-radius: 50%; border: 2px solid #fff; box-shadow: 0 0 0 1px rgba(0,0,0,0.18); }
+
+/* Category editor */
+.cat-icon { width: 46px; text-align: center; font-size: 1.2rem; padding-left: 4px; padding-right: 4px; }
+.cat-list li { gap: 8px; }
+.emoji-pick { display: flex; flex-wrap: wrap; gap: 2px; margin-top: 8px; }
+.emoji-pick button { font-size: 1.3rem; padding: 4px 6px; text-decoration: none; border-radius: 8px; }
+.emoji-pick button:hover { background: rgba(0, 0, 0, 0.05); }
+#cat-edit > summary { cursor: pointer; list-style: none; }
+#cat-edit > summary::-webkit-details-marker { display: none; }
+#cat-edit > summary::after { content: ' ▸'; color: var(--ink-soft); }
+#cat-edit[open] > summary::after { content: ' ▾'; }

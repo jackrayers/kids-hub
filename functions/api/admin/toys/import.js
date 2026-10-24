@@ -9,7 +9,7 @@ import { putImage } from '../../../../lib/images.js';
 export async function onRequestPost({ request, env, data }) {
   const body = await readJson(request);
   const pageUrl = requireString(body.url, 'url', { max: 2000 });
-  const category = requireCategory(body.category || 'other');
+  const category = await requireCategory(env.DB, body.category);
 
   const page = await readProductPage(pageUrl);
   const title = requireString(body.title, 'title', { max: 80, optional: true })

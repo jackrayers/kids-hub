@@ -478,6 +478,7 @@
     const cutoutIssues = new Map(); // toyId → { reason, blob } when a cutout looked wrong
     let catalog = { toys: [], categories: [] };
     let catalogSearch = '';
+    let catEditOpen = false;
 
     const categoryOptions = (selected) => catalog.categories
       .map((c) => `<option value="${esc(c.id)}" ${c.id === selected ? 'selected' : ''}>${esc(c.icon)} ${esc(c.name)}</option>`).join('');
@@ -672,6 +673,35 @@
                   <button class="btn small danger" data-act="delete">Delete</button></li>`).join('')}
               </ul>
             </details>` : ''}
+        </div>
+
+        <div class="card">
+          <details id="cat-edit" ${catEditOpen ? 'open' : ''}>
+            <summary><h2 style="display:inline;margin:0">Categories</h2> <span class="muted">${catalog.categories.map((c) => esc(c.icon)).join(' ')}</span></summary>
+            <p class="muted" style="margin:8px 0">Kids see these as the filter buttons (only ones with toys in them). Tap an emoji to change it.</p>
+            <ul class="list cat-list">
+              ${catalog.categories.map((c, i, all) => {
+                const n = catalog.toys.filter((t) => t.category === c.id).length;
+                const fixed = c.id === 'other';
+                return `
+                <li data-cat="${esc(c.id)}">
+                  <input class="compact cat-icon" value="${esc(c.icon)}" data-cf="icon" aria-label="Emoji for ${esc(c.name)}">
+                  <div class="main"><input class="compact" value="${esc(c.name)}" data-cf="name" maxlength="30" style="width:100%" aria-label="Name"></div>
+                  <span class="muted" style="font-size:0.8rem;white-space:nowrap">${n} toy${n === 1 ? '' : 's'}</span>
+                  ${fixed ? '<span class="muted" style="font-size:0.8rem" title="Toys without a category go here">always last</span>' : `
+                    <button class="btn small" data-cmove="-1" ${i === 0 ? 'disabled' : ''} aria-label="Move up">↑</button>
+                    <button class="btn small" data-cmove="1" ${i >= all.length - 2 ? 'disabled' : ''} aria-label="Move down">↓</button>
+                    <button class="btn small danger" data-cdel aria-label="Delete ${esc(c.name)}">✕</button>`}
+                </li>`;
+              }).join('')}
+            </ul>
+            <form id="cat-add" class="row" style="margin-top:10px">
+              <input class="compact cat-icon" name="icon" placeholder="🎁" aria-label="Emoji">
+              <input class="grow" name="name" placeholder="New category, e.g. Dinosaurs" maxlength="30" required>
+              <button class="btn primary">Add</button>
+            </form>
+            <div class="emoji-pick" aria-label="Emoji ideas">${['🦖', '🦄', '🚀', '🏰', '🐶', '🐱', '🎮', '🎵', '🧩', '🪀', '🛝', '🚲', '🧪', '🔬', '⚽', '🏀', '💎', '👗', '🍳', '🌈', '⭐', '🎃', '🎄', '🛷'].map((e) => `<button type="button" class="linkish" data-emo="${e}">${e}</button>`).join('')}</div>
+          </details>
         </div>`;
 
       const search = $('#toy-search');
@@ -679,6 +709,41 @@
         if (searchHadFocus) { search.focus(); search.setSelectionRange(search.value.length, search.value.length); }
         search.addEventListener('input', () => { catalogSearch = search.value; renderCatalog(false); });
       }
+
+      // Categories
+      $('#cat-edit').addEventListener('toggle', (e) => { catEditOpen = e.target.open; });
+      const catDone = async (msg) => { await loadCatalog(); renderCatalog(false); if (msg) toast(msg); };
+      let lastIconInput = $('#cat-add').elements.icon;
+      main.querySelectorAll('.cat-icon').forEach((el) => el.addEventListener('focus', () => { lastIconInput = el; }));
+      main.querySelectorAll('[data-emo]').forEach((b) => b.addEventListener('click', () => {
+        lastIconInput.value = b.dataset.emo;
+        lastIconInput.dispatchEvent(new Event('change', { bubbles: true }));
+      }));
+      main.querySelectorAll('[data-cf]').forEach((el) => el.addEventListener('change', () => run(async () => {
+        await adminApi(`/categories/${el.closest('[data-cat]').dataset.cat}`, { method: 'PATCH', body: { [el.dataset.cf]: el.value } });
+        await catDone('Saved');
+      })));
+      main.querySelectorAll('[data-cmove]').forEach((b) => b.addEventListener('click', () => run(async () => {
+        const ids = catalog.categories.map((c) => c.id);
+        const i = ids.indexOf(b.closest('[data-cat]').dataset.cat); const j = i + Number(b.dataset.cmove);
+        [ids[i], ids[j]] = [ids[j], ids[i]];
+        await adminApi('/categories', { method: 'PUT', body: { order: ids } });
+        await catDone();
+      })));
+      main.querySelectorAll('[data-cdel]').forEach((b) => b.addEventListener('click', () => {
+        const c = catalog.categories.find((x) => x.id === b.closest('[data-cat]').dataset.cat);
+        const n = catalog.toys.filter((t) => t.category === c.id).length;
+        if (!confirm(`Delete “${c.name}”?${n ? ` Its ${n} toy${n === 1 ? '' : 's'} will move to Other.` : ''}`)) return;
+        run(async () => { await adminApi(`/categories/${c.id}`, { method: 'DELETE' }); await catDone('Deleted'); });
+      }));
+      $('#cat-add').addEventListener('submit', (e) => {
+        e.preventDefault();
+        const f = e.target.elements;
+        run(async () => {
+          await adminApi('/categories', { method: 'POST', body: { name: f.name.value, icon: f.icon.value } });
+          await catDone('Category added');
+        });
+      });
 
       $('#toy-link').addEventListener('submit', (e) => {
         e.preventDefault();

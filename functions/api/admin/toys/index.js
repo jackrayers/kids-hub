@@ -1,7 +1,7 @@
 // GET  /api/admin/toys?status=draft|approved|hidden
 // POST /api/admin/toys?title=...&category=...   body: image/jpeg|png|webp (a photo of the toy)
 import { audienceMap } from '../../../../lib/audience.js';
-import { CATEGORIES, getToyRow, requireCategory, shapeToy } from '../../../../lib/catalog.js';
+import { getToyRow, listCategories, requireCategory, shapeToy } from '../../../../lib/catalog.js';
 import { newId } from '../../../../lib/crypto.js';
 import { IMAGE_TYPES, MAX_IMAGE_BYTES } from '../../../../lib/fetch-product.js';
 import { HttpError, json, requireString } from '../../../../lib/http.js';
@@ -14,13 +14,13 @@ export async function onRequestGet({ request, env }) {
     : env.DB.prepare(`SELECT * FROM toys ORDER BY CASE status WHEN 'draft' THEN 0 WHEN 'approved' THEN 1 ELSE 2 END, created_at DESC`);
   const { results } = await stmt.all();
   const audience = await audienceMap(env.DB, 'toy');
-  return json({ toys: results.map((r) => ({ ...shapeToy(r), audience: audience[r.id] || null })), categories: CATEGORIES });
+  return json({ toys: results.map((r) => ({ ...shapeToy(r), audience: audience[r.id] || null })), categories: await listCategories(env.DB) });
 }
 
 export async function onRequestPost({ request, env, data }) {
   const url = new URL(request.url);
   const title = requireString(url.searchParams.get('title'), 'title', { max: 80 });
-  const category = requireCategory(url.searchParams.get('category') || 'other');
+  const category = await requireCategory(env.DB, url.searchParams.get('category'));
   const mime = (request.headers.get('content-type') || '').split(';')[0];
   if (!IMAGE_TYPES[mime]) throw new HttpError(415, 'Upload a JPEG, PNG or WebP photo');
   const bytes = await request.arrayBuffer();

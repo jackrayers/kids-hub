@@ -11,7 +11,7 @@ export async function onRequestPatch({ request, env, params }) {
   const body = await readJson(request);
   const fields = {};
   if ('title' in body) fields.title = requireString(body.title, 'title', { max: 80 });
-  if ('category' in body) fields.category = requireCategory(body.category);
+  if ('category' in body) fields.category = await requireCategory(env.DB, body.category);
   if ('sort' in body) fields.sort = requireInt(body.sort, 'sort', { min: 0, max: 9999 });
   if ('source_url' in body) {
     const raw = requireString(body.source_url, 'source_url', { max: 2000, optional: true });

@@ -1,6 +1,6 @@
 // GET /api/kid/catalog?kid=<id> → approved toys, categories, and this kid's wish list.
 import { visibleBinds, visibleSql } from '../../../lib/audience.js';
-import { CATEGORIES, WISHLIST_MAX } from '../../../lib/catalog.js';
+import { listCategories, WISHLIST_MAX } from '../../../lib/catalog.js';
 import { json } from '../../../lib/http.js';
 import { requireOwnKid } from '../../../lib/kid-access.js';
 
@@ -16,7 +16,7 @@ export async function onRequestGet({ request, env, data }) {
   const used = new Set(toys.results.map((t) => t.category));
   return json({
     kid: { id: kid.id, name: kid.name },
-    categories: CATEGORIES.filter((c) => used.has(c.id)),
+    categories: (await listCategories(env.DB)).filter((c) => used.has(c.id)).map(({ id, name, icon }) => ({ id, name, icon })),
     toys: toys.results.map((t) => ({
       id: t.id,
       title: t.title,
