@@ -5,7 +5,7 @@ import { newId } from '../../../lib/crypto.js';
 import { balanceOf } from '../../../lib/db.js';
 import { HttpError, json, readJson, requireString } from '../../../lib/http.js';
 import { requireOwnKid } from '../../../lib/kid-access.js';
-import { notifyHomeAssistant, priceFor, shapeModel } from '../../../lib/printshop.js';
+import { notifyGrownups, priceFor, shapeModel } from '../../../lib/printshop.js';
 
 export async function onRequestPost({ request, env, data, waitUntil }) {
   const body = await readJson(request);
@@ -38,11 +38,20 @@ export async function onRequestPost({ request, env, data, waitUntil }) {
   ]);
   if (!res[0].meta.changes) throw new HttpError(402, `You need ${cost} stars for this one`);
 
-  notifyHomeAssistant(env, waitUntil, {
-    event: 'kids_hub_print_request',
-    kid: kid.name, model: model.title, cost, multi,
-    colors: colors.map((c) => `${c.slot}: ${c.name}`).join(', '),
-    message: `${kid.name} spent ${cost}⭐ on a ${model.title} (${colors.map((c) => c.name).join(' / ')})`,
+  const colorList = colors.map((c) => c.name).join(' / ');
+  notifyGrownups(env, waitUntil, {
+    push: {
+      title: `🖨️ ${kid.name} wants a ${model.title}`,
+      body: `${colorList} · ${cost}⭐`,
+      url: '/admin/#print', tag: `print-${id}`,
+      image: row.thumb_key ? `/img/${row.thumb_key}` : undefined,
+    },
+    webhook: {
+      event: 'kids_hub_print_request',
+      kid: kid.name, model: model.title, cost, multi,
+      colors: colors.map((c) => `${c.slot}: ${c.name}`).join(', '),
+      message: `${kid.name} spent ${cost}⭐ on a ${model.title} (${colorList})`,
+    },
   });
   return json({ ok: true, id, cost, balance: await balanceOf(env.DB, kid.id) }, 201);
 }

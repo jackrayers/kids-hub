@@ -92,7 +92,7 @@ Kids never log in; a paired device shows its household's kids. A tablet can inst
 - **Finishes (`public/shared/finishes.js`):** each filament has a `finish` (plain, matte, silk/dual silk, marble, sparkle/galaxy, rainbow, wood, glow) and optional `hex2` (veins, flecks, grain, 2nd silk color). Swatches are CSS gradients; the viewer's fragment shader draws the pattern procedurally in model space (mm), so it's roughly real scale and sticks to the model while spinning.
 - **Pricing:** per model, `price_single` (every slot the same filament) and `price_multi` (2+ filaments).
 - **Spend:** one guarded batch — insert the request only if balance ≥ cost, then the ledger spend `WHERE changes() = 1`. Refund = status `refunded` + positive ledger row.
-- New request → optional POST to `HA_WEBHOOK_URL` (secret) with `{event, kid, model, cost, multi, colors, message}`.
+- **Alerts:** new request → Web Push to every grown-up device that turned alerts on (`lib/webpush.js`: VAPID + RFC 8291 aes128gcm with WebCrypto only; VAPID keys generated on first use and stored in `settings`; dead subscriptions removed on 404/410). The service worker shows the notification and opens `/admin/#print`. Parent mode has its own manifest (`/admin-manifest.webmanifest`, scope `/admin/`) so it can be installed on iPhone, which iOS requires for web push. The `HA_WEBHOOK_URL` webhook still works if set, but isn't needed.
 - Queue: Waiting → Printing → Done, or Refund (with a reason).
 
 ## Projects

@@ -6,6 +6,10 @@
   <title>Parent mode · Kids Hub</title>
   <meta name="theme-color" content="#ffffff">
   <link rel="icon" href="/icons/icon.svg" type="image/svg+xml">
+  <link rel="manifest" href="/admin-manifest.webmanifest">
+  <link rel="apple-touch-icon" href="/icons/icon-180.png">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-title" content="Kids Hub Admin">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@700;800&display=swap" media="print" onload="this.media='all'">
@@ -879,6 +883,7 @@
     function renderQueue(box) {
       const reqs = ps.requests;
       box.innerHTML = `
+        <div class="card alerts" id="alerts"><p class="muted" style="margin:0">Checking phone alerts…</p></div>
         <div class="card">
           <div class="row" style="justify-content:space-between;margin-bottom:6px">
             <h2 style="margin:0">${ps.showAll ? 'All requests' : 'To print'}</h2>
@@ -902,6 +907,7 @@
               </li>`).join('') : `<li class="muted">${ps.showAll ? 'No requests yet.' : 'Nothing to print. 🎉'}</li>`}
           </ul>
         </div>`;
+      renderAlerts($('#alerts'));
       $('#q-toggle').addEventListener('click', () => { ps.showAll = !ps.showAll; renderPrintShop(); });
       box.querySelectorAll('[data-rs]').forEach((b) => b.addEventListener('click', () => {
         const id = b.closest('[data-id]').dataset.id;
@@ -916,6 +922,73 @@
           toast(status === 'refunded' ? 'Stars given back' : status === 'done' ? 'Marked done' : 'Printing');
           renderPrintShop();
         });
+      }));
+    }
+
+    // Phone alerts (Web Push) -------------------------------------------------
+    const b64ToBytes = (str) => Uint8Array.from(atob(str.replace(/-/g, '+').replace(/_/g, '/') + '==='.slice((str.length + 3) % 4)), (c) => c.charCodeAt(0));
+    function deviceLabel() {
+      const ua = navigator.userAgent;
+      const dev = /iPhone/.test(ua) ? 'iPhone' : /iPad/.test(ua) || (/Macintosh/.test(ua) && navigator.maxTouchPoints > 1) ? 'iPad'
+        : /Android/.test(ua) ? 'Android' : /Mac/.test(ua) ? 'Mac' : /Windows/.test(ua) ? 'Windows' : 'This device';
+      const br = /Edg\//.test(ua) ? 'Edge' : /Firefox\//.test(ua) ? 'Firefox' : /Chrome\//.test(ua) ? 'Chrome' : /Safari\//.test(ua) ? 'Safari' : '';
+      return br && !/iPhone|iPad/.test(dev) ? `${dev} · ${br}` : dev;
+    }
+    async function pushState() {
+      const ios = /iPhone|iPad|iPod/.test(navigator.userAgent) || (/Macintosh/.test(navigator.userAgent) && navigator.maxTouchPoints > 1);
+      const standalone = matchMedia('(display-mode: standalone)').matches || navigator.standalone === true;
+      const supported = 'serviceWorker' in navigator && 'PushManager' in window && 'Notification' in window;
+      if (!supported) return { mode: ios && !standalone ? 'ios-install' : 'unsupported' };
+      const reg = await navigator.serviceWorker.register('/sw.js');
+      await navigator.serviceWorker.ready;
+      const sub = await reg.pushManager.getSubscription();
+      const info = await adminApi('/push');
+      const on = !!sub && info.devices.some((d) => d.endpoint === sub.endpoint);
+      return { mode: Notification.permission === 'denied' ? 'denied' : on ? 'on' : 'off', reg, sub, info };
+    }
+    async function renderAlerts(box) {
+      let st;
+      try { st = await pushState(); } catch (err) { box.innerHTML = `<p class="muted" style="margin:0">Phone alerts: ${esc(err.message)}</p>`; return; }
+      if (!box.isConnected) return;
+      const others = (st.info?.devices || []).filter((d) => d.endpoint !== st.sub?.endpoint);
+      const otherLine = others.length ? `<p class="muted" style="margin:6px 0 0;font-size:0.85rem">Also alerting: ${others.map((d) => esc(d.label || 'a device')).join(', ')}</p>` : '';
+      const msg = {
+        'ios-install': '📱 <strong>To get alerts on iPhone or iPad:</strong> tap Share → <em>Add to Home Screen</em>, open <em>Kids Hub Admin</em> from the new icon, sign in, then come back here.',
+        unsupported: 'This browser can’t show alerts. Try Chrome, Edge, Firefox or Safari.',
+        denied: '🔕 Notifications are blocked for this site. Allow them in your browser or phone settings, then reload.',
+        on: '🔔 <strong>Alerts are on for this device.</strong> You’ll get a ping when a kid spends stars.',
+        off: '🔔 Get a ping on this device when a kid spends stars in the Print Shop.',
+      }[st.mode];
+      box.innerHTML = `
+        <div class="row" style="justify-content:space-between;gap:10px;flex-wrap:wrap">
+          <p style="margin:0;flex:1 1 260px">${msg}</p>
+          <div class="row" style="gap:8px">
+            ${st.mode === 'off' ? '<button class="btn small primary" data-push="on">Turn on alerts</button>' : ''}
+            ${st.mode === 'on' ? '<button class="btn small" data-push="test">Send a test</button><button class="btn small" data-push="off">Turn off</button>' : ''}
+          </div>
+        </div>${otherLine}`;
+      box.querySelector('[data-push="on"]')?.addEventListener('click', () => run(async () => {
+        const perm = await Notification.requestPermission();
+        if (perm !== 'granted') throw new Error('Notifications weren’t allowed');
+        const key = b64ToBytes(st.info.publicKey);
+        let sub = st.sub;
+        const same = sub?.options?.applicationServerKey && new Uint8Array(sub.options.applicationServerKey).every((b, i) => b === key[i]);
+        if (sub && !same) { await sub.unsubscribe(); sub = null; }
+        sub = sub || await st.reg.pushManager.subscribe({ userVisibleOnly: true, applicationServerKey: key });
+        await adminApi('/push', { method: 'POST', body: { subscription: sub.toJSON(), label: deviceLabel() } });
+        toast('Alerts on');
+        renderAlerts(box);
+      }));
+      box.querySelector('[data-push="test"]')?.addEventListener('click', () => run(async () => {
+        const r = await adminApi('/push?test=1', { method: 'POST' });
+        toast(r.sent ? `Test sent to ${r.sent} device${r.sent === 1 ? '' : 's'}` : 'The push service didn’t accept it — try turning alerts off and on', !r.sent);
+        if (r.removed) renderAlerts(box);
+      }));
+      box.querySelector('[data-push="off"]')?.addEventListener('click', () => run(async () => {
+        await adminApi('/push', { method: 'DELETE', body: { endpoint: st.sub.endpoint } });
+        await st.sub.unsubscribe().catch(() => {});
+        toast('Alerts off');
+        renderAlerts(box);
       }));
     }
 
@@ -1318,7 +1391,13 @@
         state.me = await adminApi('/me');
         $('#who').textContent = `Signed in as ${state.me.adult.name || state.me.adult.email}`;
         await refreshCore();
+        const want = location.hash.slice(1);
+        if (document.querySelector(`#tabs button[data-tab="${CSS.escape(want)}"]`)) {
+          state.tab = want;
+          document.querySelectorAll('#tabs button').forEach((x) => x.setAttribute('aria-selected', x.dataset.tab === want));
+        }
         render();
+        if ('serviceWorker' in navigator) navigator.serviceWorker.register('/sw.js').catch(() => {});
       } catch (err) {
         main.innerHTML = `<div class="card"><h2>Can’t open parent mode</h2><p>${esc(err.message)}</p></div>`;
       }

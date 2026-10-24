@@ -34,8 +34,8 @@ Tablet web apps for the kids: **Santa’s Catalog** (browse toys, build a printa
 
 ## Print Shop setup
 1. Migrations run automatically (see Deploys).
-2. Optional phone ping for new requests: make a Home Assistant webhook automation, then `npx wrangler pages secret put HA_WEBHOOK_URL --project-name kids-hub` with its URL (e.g. `https://ha.example.com/api/webhook/kids-hub-print`). The JSON body has `message`, `kid`, `model`, `cost`, `colors`.
-3. Parent mode → **Print Shop → Filaments**: add the colors you have on hand; untick *in stock* when one runs out.
+2. **Phone alerts:** open Parent mode → Print Shop on your phone and tap **Turn on alerts**, then **Send a test**. On iPhone/iPad first tap Share → *Add to Home Screen*, open *Kids Hub Admin* from that icon and sign in (Apple only allows web alerts from home-screen apps). Each grown-up turns it on for their own devices. Nothing to configure: the push keys are made automatically.
+3. Parent mode → **Print Shop → Filaments**: add the colors you have on hand (plain, silk, marble, sparkle…); untick *in stock* when one runs out.
 4. **Models → Choose .3mf project** (from a computer): paint it in PrusaSlicer, *File → Save Project As*. Name the colors, set ⭐ one-color / mixed prices, pick who can see it, then **Put in shop**.
 
 ## Using it
