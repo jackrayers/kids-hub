@@ -53,6 +53,10 @@
         </label>
       </div>
       <label class="field">Household<select name="household_id" id="kid-household"></select></label>
+      <fieldset style="border:1px solid var(--line);border-radius:12px;padding:10px 12px">
+        <legend class="muted" style="padding:0 6px">Apps</legend>
+        <div class="row" id="kid-apps"></div>
+      </fieldset>
       <label class="row" style="gap:8px"><input type="checkbox" name="active" checked> Show on tablets</label>
       <div class="row" style="justify-content:flex-end">
         <button class="btn" value="cancel" formnovalidate>Cancel</button>
@@ -66,7 +70,7 @@
 
     const $ = (sel, root = document) => root.querySelector(sel);
     const main = $('#main');
-    const state = { me: null, households: [], kids: [], tab: 'tokens', selectedKids: new Set(), editingKid: null };
+    const state = { me: null, apps: [], households: [], kids: [], tab: 'tokens', selectedKids: new Set(), editingKid: null };
 
     // ---------- helpers ----------
     function toast(text, isError = false) {
@@ -91,6 +95,7 @@
 
     async function refreshCore() {
       const [h, k] = await Promise.all([adminApi('/households'), adminApi('/kids?all=1')]);
+      if (!state.apps.length) state.apps = (await adminApi('/apps')).apps;
       state.households = h.households;
       state.kids = k.kids;
     }
@@ -199,6 +204,13 @@
               <h2 style="margin:0">${esc(h.name)}</h2>
               <button class="btn small" data-add-kid="${esc(h.id)}">+ Add kid</button>
             </div>
+            ${kids.length ? `
+              <div class="row muted" style="margin:4px 0 6px;font-size:0.85rem">
+                ${state.apps.map((a) => `
+                  <span>${esc(a.icon)} ${esc(a.name)} for everyone:</span>
+                  <button class="btn small" data-hh-app="${esc(a.id)}" data-hh="${esc(h.id)}" data-on="1">On</button>
+                  <button class="btn small" data-hh-app="${esc(a.id)}" data-hh="${esc(h.id)}" data-on="0">Off</button>`).join('<span style="width:8px"></span>')}
+              </div>` : ''}
             <ul class="list">
               ${kids.length ? kids.map((k) => `
                 <li>
@@ -206,6 +218,11 @@
                   <div class="main">
                     <div><strong>${esc(k.name)}</strong> ${k.active ? '' : '<span class="pill off">hidden</span>'}</div>
                     <div class="meta">${k.birth_year ? `born ${k.birth_year} · ` : ''}${k.ui_mode === 'reader' ? 'pictures + words' : 'pictures'} · ⭐ ${k.balance}</div>
+                    <div class="chips" style="margin-top:6px">
+                      ${state.apps.map((a) => `
+                        <button class="chip app-toggle" type="button" data-kid="${esc(k.id)}" data-app="${esc(a.id)}"
+                          aria-pressed="${!!k.apps?.[a.id]}" title="${esc(a.name)}">${esc(a.icon)} ${esc(a.name)}</button>`).join('')}
+                    </div>
                   </div>
                   <button class="btn small" data-edit-kid="${esc(k.id)}">Edit</button>
                 </li>`).join('') : '<li class="muted">No kids yet.</li>'}
@@ -220,6 +237,22 @@
           </form>
         </div>`;
 
+      main.querySelectorAll('.app-toggle').forEach((b) => b.addEventListener('click', () => run(async () => {
+        const on = b.getAttribute('aria-pressed') !== 'true';
+        b.setAttribute('aria-pressed', on); // optimistic
+        try {
+          await adminApi(`/kids/${b.dataset.kid}`, { method: 'PATCH', body: { apps: { [b.dataset.app]: on } } });
+        } catch (err) { b.setAttribute('aria-pressed', !on); throw err; }
+        await refreshCore();
+      })));
+      main.querySelectorAll('[data-hh-app]').forEach((b) => b.addEventListener('click', () => run(async () => {
+        const on = b.dataset.on === '1';
+        const app = state.apps.find((a) => a.id === b.dataset.hhApp);
+        await adminApi(`/households/${b.dataset.hh}/apps`, { method: 'POST', body: { app: app.id, enabled: on } });
+        await refreshCore();
+        renderKids();
+        toast(`${app.name} turned ${on ? 'on' : 'off'} for everyone`);
+      })));
       main.querySelectorAll('[data-add-kid]').forEach((b) => b.addEventListener('click', () => openKid(null, b.dataset.addKid)));
       main.querySelectorAll('[data-edit-kid]').forEach((b) => b.addEventListener('click', () =>
         openKid(state.kids.find((k) => k.id === b.dataset.editKid))));
@@ -252,6 +285,9 @@
       kidForm.elements.birth_year.value = kid?.birth_year || '';
       kidForm.elements.ui_mode.value = kid?.ui_mode || 'picture';
       kidForm.elements.active.checked = kid ? kid.active : true;
+      $('#kid-apps').innerHTML = state.apps.map((a) => `
+        <label class="row" style="gap:6px"><input type="checkbox" name="app_${esc(a.id)}"
+          ${(kid ? kid.apps?.[a.id] : a.default_enabled) ? 'checked' : ''}> ${esc(a.icon)} ${esc(a.name)}</label>`).join('');
       paintKidPreview();
       kidDialog.showModal();
     }
@@ -270,9 +306,14 @@
         household_id: f.elements.household_id.value,
         active: f.elements.active.checked,
       };
+      const apps = Object.fromEntries(state.apps.map((a) => [a.id, f.elements[`app_${a.id}`].checked]));
       run(async () => {
-        if (state.editingKid) await adminApi(`/kids/${state.editingKid.id}`, { method: 'PATCH', body });
-        else await adminApi('/kids', { method: 'POST', body });
+        if (state.editingKid) {
+          await adminApi(`/kids/${state.editingKid.id}`, { method: 'PATCH', body: { ...body, apps } });
+        } else {
+          const { kid } = await adminApi('/kids', { method: 'POST', body });
+          await adminApi(`/kids/${kid.id}`, { method: 'PATCH', body: { apps } });
+        }
         kidDialog.close();
         await refreshCore();
         render();

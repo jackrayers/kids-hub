@@ -29,18 +29,8 @@
       <div class="hub-who" id="hub-who"></div>
       <button class="back-btn" id="switch-kid" type="button">↩ Switch</button>
     </div>
-    <div class="doors">
-      <a class="door santa soon" href="#" aria-disabled="true" id="door-santa">
-        <span class="icon">🎅</span>
-        <span class="label">Santa’s Catalog</span>
-        <span class="sub">Pick toys for your letter</span>
-      </a>
-      <a class="door print soon" href="#" aria-disabled="true" id="door-print">
-        <span class="icon">🧩</span>
-        <span class="label">Print Shop</span>
-        <span class="sub">Spend your stars</span>
-      </a>
-    </div>
+    <div class="doors" id="doors"></div>
+    <p class="empty" id="no-apps" hidden>Nothing here yet — ask a grown-up!</p>
   </section>
 
   <p class="empty" id="loading">Loading…</p>
@@ -51,6 +41,7 @@
 
     const $ = (id) => document.getElementById(id);
     let kids = [];
+    let apps = [];
 
     function showPicker() {
       session.remove('kh.kidId');
@@ -74,6 +65,16 @@
           <div class="name">${esc(kid.name)}</div>
           <span class="stars" aria-label="${kid.balance} stars">⭐ ${kid.balance}</span>
         </div>`;
+      const mine = apps.filter((a) => kid.apps?.[a.id]);
+      $('no-apps').hidden = mine.length > 0;
+      $('doors').innerHTML = mine.map((a) => `
+        <a class="door ${esc(a.theme)} ${a.ready ? '' : 'soon'}"
+           href="${a.ready ? `${esc(a.path)}?kid=${encodeURIComponent(kid.id)}` : '#'}"
+           ${a.ready ? '' : 'aria-disabled="true"'}>
+          <span class="icon">${esc(a.icon)}</span>
+          <span class="label">${esc(a.name)}</span>
+          <span class="sub">${esc(a.sub)}</span>
+        </a>`).join('');
     }
 
     $('kid-grid').addEventListener('click', (e) => {
@@ -83,13 +84,15 @@
       if (kid) showHub(kid);
     });
     $('switch-kid').addEventListener('click', showPicker);
-    document.querySelectorAll('.door[aria-disabled="true"]').forEach((d) =>
-      d.addEventListener('click', (e) => e.preventDefault()));
+    $('doors').addEventListener('click', (e) => {
+      if (e.target.closest('.door[aria-disabled="true"]')) e.preventDefault();
+    });
 
     async function load() {
       try {
         const data = await kidApi('/household');
         kids = data.kids;
+        apps = data.apps;
         document.title = `${data.household?.name || 'Kids'} Hub`;
         $('loading').hidden = true;
         const current = kids.find((k) => k.id === session.get('kh.kidId'));

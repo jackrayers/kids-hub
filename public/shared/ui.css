@@ -335,3 +335,7 @@ dialog::backdrop { background: rgba(43, 33, 64, 0.4); }
 dialog form { display: grid; gap: 12px; }
 dialog .avatar { --size: 84px; margin: 0 auto; }
 .muted { color: var(--ink-soft); font-size: 0.9rem; }
+
+.chip.app-toggle { padding: 3px 10px; font-size: 0.8rem; color: var(--ink-soft); }
+.chip.app-toggle[aria-pressed='false'] { opacity: 0.55; text-decoration: line-through; }
+.chip.app-toggle[aria-pressed='true'] { color: var(--green-deep); }

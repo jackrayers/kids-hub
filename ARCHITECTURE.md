@@ -45,12 +45,17 @@ Kids never log in; a paired device shows its household's kids.
 - `devices(id, household_id, name, token_hash, created_at, last_seen, revoked_at)`
 - `pairing_codes(code PK, household_id, expires_at)`
 - `api_keys(id, name, key_hash, scopes)`
+- `kid_apps(kid_id, app, enabled)` — per-kid app switches; missing row = app default from `lib/apps.js`
 - `ledger(id, kid_id, delta, kind 'award'|'spend'|'refund'|'adjust', reason, ref_type, ref_id, actor, created_at)` — **balance = SUM(delta)**; append-only, never edit rows
 - `toys(id, title, source_url, source_key, stylized_key, coloring_key, category, age_min, status 'draft'|'approved'|'hidden', created_by, created_at)`
 - `wishlist(kid_id, toy_id, added_at, PK(kid_id, toy_id))`
 - `models(id, title, source_url, thumb_key, grams, print_minutes, slots 1–5, slot_labels JSON, base_cost, per_color_cost, cost_override, status)`
 - `filaments(id, name, material, hex, in_stock, sort)`
 - `print_requests(id, kid_id, model_id, slot_colors JSON, cost, status 'requested'|'printing'|'done'|'refunded', refund_reason, created_at, updated_at)`
+
+## Apps on/off
+- Registry in `lib/apps.js` (`santa`, `print`). Each kid has every app on by default; parent mode can switch apps per kid or for a whole household (e.g. Santa’s Catalog only for the younger ones, or off after Christmas).
+- The hub only shows a kid’s enabled apps. Kid-facing app endpoints must call `requireKidApp(db, kidId, app)`.
 
 ## Tokens
 - Adults award/adjust in parent mode (any adult, any kid). Each entry records `actor`.

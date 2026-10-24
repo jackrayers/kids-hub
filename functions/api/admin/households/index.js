@@ -1,7 +1,7 @@
 // GET  /api/admin/households
 // POST /api/admin/households  { name }
-import { newId } from '../../../lib/crypto.js';
-import { json, readJson, requireString } from '../../../lib/http.js';
+import { newId } from '../../../../lib/crypto.js';
+import { json, readJson, requireString } from '../../../../lib/http.js';
 
 export async function onRequestGet({ env }) {
   const { results } = await env.DB.prepare(`SELECT h.*,

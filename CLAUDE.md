@@ -10,6 +10,7 @@ Read `ARCHITECTURE.md` first; it is the source of truth for scope and data model
 - The **ledger is append-only** (DB triggers enforce it). Balances are `SUM(delta)`. Spend + related writes go in one `env.DB.batch()`.
 - Schema changes = new numbered file in `migrations/`. Never edit an applied migration.
 - Kid UI: picture-first, huge tap targets, Baloo 2 font, works on iPad and Android. `ui_mode = 'reader'` may add text.
+- Apps are registered in `lib/apps.js`; kid-facing endpoints for an app must check `requireKidApp()`. Set `ready: true` when an app ships.
 - Images live in R2 under unguessable keys and are served by `functions/img/[[path]].js`.
 - Wrap all `localStorage` access (use `store` / `session` from `public/shared/api.js`).
 

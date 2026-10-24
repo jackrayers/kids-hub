@@ -17,17 +17,17 @@ Tablet web apps for the kids: **Santa’s Catalog** (browse toys, build a printa
    - Application domain `kids.jackrayers.com`, paths `admin` and `api/admin`.
    - Policy: *Allow* → Emails → you plus any other grown-ups. Login method: One-time PIN.
    - Copy the **Application Audience (AUD) tag**.
-7. **Variables** (Pages → Settings → Variables and secrets, production):
-   - `ACCESS_TEAM_DOMAIN` = `<your-team>.cloudflareaccess.com`
-   - `ACCESS_AUD` = the AUD tag
-   - `OWNER_EMAIL` = your email (you become owner on first sign-in)
+7. **Settings:** because `wrangler.toml` is the Pages config, plain variables live there, not in the dashboard.
+   - In `wrangler.toml` `[vars]`: `ACCESS_TEAM_DOMAIN` = `<your-team>.cloudflareaccess.com`, `ACCESS_AUD` = the AUD tag. Commit.
+   - Owner email as a secret: `npx wrangler pages secret put OWNER_EMAIL --project-name kids-hub` (you become owner on first sign-in).
 8. Deploy: `npm run deploy` (or push to `main` if connected to Git).
 
 ## Using it
 1. Open `kids.jackrayers.com/admin`, sign in, create a household, add kids.
 2. **Tablets → Get a code**, then on the kid’s tablet open `kids.jackrayers.com/pair` and type the code.
 3. On iPad: Share → *Add to Home Screen*. On Android Chrome: menu → *Install app*.
-4. Other grown-ups: add them under **Grown-ups** *and* to the Access policy.
+4. **Kids → app switches:** tap an app under a kid to turn it on/off, or use *for everyone* per household.
+5. Other grown-ups: add them under **Grown-ups** *and* to the Access policy.
 
 ## Home Assistant (later)
 Create a key under **Grown-ups → Integration keys**, then e.g.:
