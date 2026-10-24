@@ -87,6 +87,13 @@ Kids never log in; a paired device shows its household's kids. A tablet can inst
 - New request → POST to HA webhook (`HA_WEBHOOK_URL` secret) for a phone notification.
 - Queue view for adults: Requested → Printing → Done, or Refund.
 
+## Print Shop — design (agreed, not built yet)
+- **Input:** a PrusaSlicer project `.3mf` (Jack verifies/paints it in PrusaSlicer; Bambu-painted MakerWorld files go through OrcaSlicer first). Always printed manually.
+- **Slots = extruders 1–5.** Unpainted triangles use the object's extruder (default 1). Painted triangles carry `slic3rpe:mmu_segmentation` — PrusaSlicer's TriangleSelector bitstream: hex chars read from the *end*, LSB-first nibbles; each node's first nibble = low 2 bits split sides (0 = leaf), high 2 bits = state (leaf; if 3, state = next nibble + 3) or special side (split → sides+1 children). State 0 = default extruder, N = extruder N. Default slot colors from `extruder_colour` in `Metadata/Slic3r_PE.config`.
+- **Proven on pikachu-v2.3mf (2026-10-24):** 125k triangles / 10.5 MB XML; parse 0.25 s + decode in JS; per-slot simplification with meshoptimizer (`LockBorder`) to 40k triangles in 0.12 s; quantized positions + uint16 indices = 361 KB raw, **~280 KB gzipped**, visually indistinguishable at tablet size.
+- **Pipeline:** parent mode (desktop browser) unzips (fflate), decodes, simplifies, uploads the tiny preview + thumbnail; original 3MF stored in R2 for download. Kids get a small WebGL viewer that recolors slots live from in-stock filaments.
+- **Pricing:** per model, `price_single` (all slots one filament) and `price_multi` (2+ filaments), set by Jack.
+
 ## Projects
 1. **Foundation** ✅ — Pages project, wrangler config, D1 migration, R2, Access, pairing, kid picker, parent mode shell (kids, adults, tokens, devices).
 2. **Santa Catalog** ✅ — import, Gemini pipeline, review/approve, browse, wish list (max 6), letter.
