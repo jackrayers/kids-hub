@@ -21,7 +21,7 @@ function median(values) {
  * @returns {Promise<{ blob: Blob, ok: boolean, removed: number, reason?: string }>}
  *   ok=false means the result looks wrong and shouldn't be used without a look.
  */
-export async function makeCutout(src, { size = 768, tolerance = 34, soft = 72, padding = 0.06 } = {}) {
+export async function makeCutout(src, { size = 768, tolerance = 34, soft = 72, padding = 0.025 } = {}) {
   const img = await loadImage(src);
   const w = img.naturalWidth;
   const h = img.naturalHeight;

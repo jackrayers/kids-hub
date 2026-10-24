@@ -78,6 +78,7 @@
     import { adminApi, avatarHtml, esc, watchForUpdates } from '/shared/api.js';
     import { makeCutout } from '/shared/cutout.js';
     import { makeLineArt } from '/shared/lineart.js';
+    import { trimToSquare } from '/shared/trim.js';
     watchForUpdates();
 
     const $ = (sel, root = document) => root.querySelector(sel);
@@ -398,7 +399,7 @@
     }
 
     // Runs the picture steps in order. 'cutout' happens in this browser.
-    async function makePictures(toyId, steps = ['stylized', 'cutout', 'coloring']) {
+    async function makePictures(toyId, steps = ['stylized', 'cutout', 'coloring', 'trim-coloring']) {
       for (const step of steps) {
         generating.set(toyId, step);
         if (state.tab === 'catalog') renderCatalog(false);
@@ -411,6 +412,10 @@
             const src = toy?.cutout || toy?.image;
             if (!src) throw new Error('Needs a picture first');
             await adminApi(`/toys/${toyId}/coloring`, { method: 'POST', body: await makeLineArt(src) });
+          } else if (step === 'trim-coloring') {
+            await loadCatalog();
+            const toy = catalog.toys.find((t) => t.id === toyId);
+            if (toy?.coloring) await adminApi(`/toys/${toyId}/coloring`, { method: 'POST', body: await trimToSquare(toy.coloring) });
           } else if (step === 'cutout') {
             await loadCatalog();
             const toy = catalog.toys.find((t) => t.id === toyId);
@@ -432,7 +437,7 @@
       if (state.tab === 'catalog') renderCatalog(false);
     }
 
-    const STEP_LABEL = { stylized: 'Painting…', 'use-photo': 'Copying…', cutout: 'Cutting out…', coloring: 'Drawing…', lineart: 'Drawing…' };
+    const STEP_LABEL = { stylized: 'Painting…', 'use-photo': 'Copying…', cutout: 'Cutting out…', coloring: 'Drawing…', lineart: 'Drawing…', 'trim-coloring': 'Trimming…' };
     // Gemini refuses some toys (well-known characters and brands): offer the product photo instead.
     const isBlocked = (msg) => /prohibited|blocked|safety|recitation|didn’t return an image/i.test(msg || '');
     const thumb = (src, label, { busy, checker, big } = {}) => `
@@ -457,7 +462,7 @@
           <div class="thumbs">
             ${thumb(t.source_image, 'Photo')}
             ${thumb(t.cutout || t.image, 'Storybook', { busy: ['stylized', 'use-photo', 'cutout'].includes(busy) && STEP_LABEL[busy], checker: !!t.cutout })}
-            ${thumb(t.coloring, 'Coloring', { busy: (busy === 'coloring' || busy === 'lineart') && STEP_LABEL[busy] })}
+            ${thumb(t.coloring, 'Coloring', { busy: ['coloring', 'lineart', 'trim-coloring'].includes(busy) && STEP_LABEL[busy] })}
           </div>
           <div class="toy-row-main">
             <div class="row" style="gap:6px">
@@ -508,7 +513,6 @@
       const live = catalog.toys.filter((t) => t.status === 'approved');
       const liveShown = live.filter((t) => !q || t.title.toLowerCase().includes(q));
       const hidden = catalog.toys.filter((t) => t.status === 'hidden');
-      const missingCutouts = live.filter((t) => !t.cutout && !generating.has(t.id));
       const searchHadFocus = document.activeElement?.id === 'toy-search';
 
       main.innerHTML = `
@@ -538,7 +542,7 @@
         <div class="card">
           <div class="row" style="justify-content:space-between;margin-bottom:8px">
             <h2 style="margin:0">In the catalog <span class="pill">${live.length}</span></h2>
-            ${missingCutouts.length ? `<button class="btn small" id="cut-all">Cut out ${missingCutouts.length} toy${missingCutouts.length > 1 ? 's' : ''}</button>` : ''}
+            ${live.length ? `<button class="btn small" id="fit-all" title="Re-cut every toy and trim the white space off its coloring page">Fit all pictures</button>` : ''}
           </div>
           ${live.length > 6 ? `<input id="toy-search" class="compact" type="search" placeholder="Search toys" value="${esc(catalogSearch)}" style="width:100%;margin-bottom:6px">` : ''}
           ${live.length ? `<ul class="list">${liveShown.map(liveRow).join('') || '<li class="muted">No matches.</li>'}</ul>`
@@ -590,8 +594,10 @@
         });
       });
 
-      $('#cut-all')?.addEventListener('click', async () => {
-        for (const t of missingCutouts) await makePictures(t.id, ['cutout']);
+      $('#fit-all')?.addEventListener('click', async () => {
+        const toys = catalog.toys.filter((t) => t.status !== 'hidden' && t.image && !generating.has(t.id));
+        for (const t of toys) await makePictures(t.id, ['cutout', 'trim-coloring']);
+        toast(`Fitted ${toys.length} toy${toys.length === 1 ? '' : 's'}`);
       });
 
       const toyOf = (el) => el.closest('[data-id]').dataset.id;
@@ -622,7 +628,7 @@
         const act = b.dataset.act;
         if (act === 'redo-stylized') makePictures(id);
         if (act === 'redo-cutout') makePictures(id, ['cutout']);
-        if (act === 'redo-coloring') makePictures(id, ['coloring']);
+        if (act === 'redo-coloring') makePictures(id, ['coloring', 'trim-coloring']);
         if (act === 'use-photo') makePictures(id, ['use-photo', 'cutout', 'lineart']);
         if (act === 'lineart') makePictures(id, ['lineart']);
         if (act === 'use-cutout') run(async () => {

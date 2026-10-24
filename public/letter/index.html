@@ -52,7 +52,7 @@
     .wants.n2, .wants.n3, .wants.n4 { grid-template-columns: repeat(2, 1fr); padding: 0 6%; }
     .wants.n5, .wants.n6 { grid-template-columns: repeat(3, 1fr); }
     .want { min-height: 0; padding: 0.6cqw; display: flex; flex-direction: column; align-items: center; gap: 1cqw; break-inside: avoid; }
-    .want img { flex: 1; min-height: 0; width: 100%; object-fit: contain; }
+    .want img { flex: 1; min-height: 0; width: 100%; object-fit: contain; mix-blend-mode: multiply; } /* off-white edges vanish on paper */
     .sign { display: flex; justify-content: flex-end; align-items: baseline; gap: 2cqw; font-size: 3.6cqw; font-weight: 700; padding-right: 16%; }
     .sign .trace { font-size: 6cqw; }
     .deco { display: flex; justify-content: center; gap: 3cqw; font-size: 4cqw; filter: grayscale(1); opacity: 0.55; }

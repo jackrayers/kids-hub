@@ -17,7 +17,7 @@ export async function makeLineArt(src, { size = 768, detail = 0.8 } = {}) {
   const c = document.createElement('canvas');
   c.width = c.height = size;
   const ctx = c.getContext('2d', { willReadFrequently: true });
-  const scale = Math.min(size / img.naturalWidth, size / img.naturalHeight) * 0.92;
+  const scale = Math.min(size / img.naturalWidth, size / img.naturalHeight) * 0.96;
   const dw = img.naturalWidth * scale; const dh = img.naturalHeight * scale;
   ctx.drawImage(img, (size - dw) / 2, (size - dh) / 2, dw, dh);
   const { data } = ctx.getImageData(0, 0, size, size);
