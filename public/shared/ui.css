@@ -362,9 +362,10 @@ dialog .avatar { --size: 84px; margin: 0 auto; }
 .wordmark {
   font-family: 'Chewy', 'Baloo 2', ui-rounded, system-ui, sans-serif;
   font-weight: 400;
-  display: inline-flex; flex-wrap: wrap; justify-content: center; align-items: baseline;
-  letter-spacing: 0.01em; line-height: 1;
+  display: block; text-align: center; text-wrap: balance;
+  letter-spacing: 0.01em; line-height: 1.08; word-spacing: 0.12em;
 }
+.wordmark .word { display: inline-block; white-space: nowrap; }
 .wordmark .ch {
   display: inline-block; position: relative;
   text-shadow:
@@ -374,7 +375,6 @@ dialog .avatar { --size: 84px; margin: 0 auto; }
   animation: bob 3.2s ease-in-out infinite;
   animation-delay: calc(var(--i) * -0.22s);
 }
-.wordmark .sp { width: 0.32em; }
 .wordmark .hat::before {
   content: ''; position: absolute; left: -0.08em; top: -0.4em; width: 0.66em; height: 0.53em;
   background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 80'%3E%3Cpath d='M12 62 C20 30 44 6 70 10 C84 12 92 30 90 46 C80 36 70 34 60 38 C50 44 40 56 36 62 Z' fill='%23e4483f' stroke='%238f1f1a' stroke-width='3'/%3E%3Crect x='6' y='56' width='60' height='18' rx='9' fill='white' stroke='%23d8d0c4' stroke-width='2'/%3E%3Ccircle cx='90' cy='50' r='10' fill='white' stroke='%23d8d0c4' stroke-width='2'/%3E%3C/svg%3E") center / contain no-repeat; transform: rotate(-14deg);
@@ -394,7 +394,9 @@ dialog .avatar { --size: 84px; margin: 0 auto; }
   filter: drop-shadow(0 6px 0 rgba(0, 0, 0, 0.12));
 }
 
-.band { position: relative; overflow: hidden; }
+.band { position: relative; overflow: hidden; overflow: clip; contain: paint; }
+/* iOS Safari can let animated children widen the page; never allow sideways scrolling on kid screens. */
+html:has(body.kid), body.kid { overflow-x: hidden; overflow-x: clip; }
 .band .drift { position: absolute; animation: drift linear infinite; will-change: transform; }
 @keyframes drift { from { transform: translateX(-30vw); } to { transform: translateX(130vw); } }
 .band .spin { animation: spin 40s linear infinite; transform-origin: center; }
@@ -410,3 +412,10 @@ dialog .avatar { --size: 84px; margin: 0 auto; }
 
 label.field { min-width: 0; }
 select { max-width: 100%; }
+
+/* Shopping list (parent mode) */
+.shop-list li { align-items: flex-start; }
+.shop-thumb { width: 64px; height: 64px; flex: none; border-radius: 12px; object-fit: cover; background: var(--cream); border: 1px solid var(--line); }
+.shop-list li.is-bought .shop-thumb { opacity: 0.5; }
+.shop-list li.is-bought strong { text-decoration: line-through; color: var(--ink-soft); }
+.shop-kid .avatar { --size: 48px; box-shadow: none; }

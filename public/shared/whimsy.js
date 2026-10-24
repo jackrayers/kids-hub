@@ -6,16 +6,19 @@ export const PALETTES = {
   christmas: ['#ffffff', '#ffe08a', '#ffffff', '#b8f0c8'],
 };
 
-/** Splits text into letter spans with alternating colours and tilts. */
+/** Splits text into letter spans with alternating colours and tilts.
+ *  Letters are grouped per word so lines only break between words, with real spaces. */
 export function wordmarkHtml(text, { colors = PALETTES.rainbow, hatFirst = false } = {}) {
   let i = 0;
-  return [...text].map((ch) => {
-    if (ch === ' ') return '<span class="sp" aria-hidden="true"></span>';
-    const n = i++;
-    const tilt = (n % 2 ? 1 : -1) * (2 + (n % 3));
-    const hat = hatFirst && n === 0 ? ' hat' : '';
-    return `<span class="ch${hat}" aria-hidden="true" style="--i:${n};--r:${tilt}deg;color:${colors[n % colors.length]}">${esc(ch)}</span>`;
-  }).join('');
+  return text.split(/\s+/).filter(Boolean).map((word) => {
+    const letters = [...word].map((ch) => {
+      const n = i++;
+      const tilt = (n % 2 ? 1 : -1) * (2 + (n % 3));
+      const hat = hatFirst && n === 0 ? ' hat' : '';
+      return `<span class="ch${hat}" style="--i:${n};--r:${tilt}deg;color:${colors[n % colors.length]}">${esc(ch)}</span>`;
+    }).join('');
+    return `<span class="word" aria-hidden="true">${letters}</span>`;
+  }).join(' ');
 }
 
 /** Fills an element with a wordmark, keeping the plain text for screen readers. */

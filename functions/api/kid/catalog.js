@@ -9,7 +9,7 @@ export async function onRequestGet({ request, env, data }) {
     env.DB.prepare(`SELECT id, title, category, stylized_key, coloring_key FROM toys
       WHERE status = 'approved' ORDER BY sort, created_at DESC`),
     env.DB.prepare(`SELECT w.toy_id FROM wishlist w JOIN toys t ON t.id = w.toy_id
-      WHERE w.kid_id = ? AND t.status = 'approved' ORDER BY w.added_at`).bind(kid.id),
+      WHERE w.kid_id = ? AND w.removed_at IS NULL AND t.status = 'approved' ORDER BY w.added_at`).bind(kid.id),
   ]);
   const used = new Set(toys.results.map((t) => t.category));
   return json({

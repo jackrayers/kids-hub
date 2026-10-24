@@ -47,11 +47,11 @@
       font: 800 7.5cqw/1 var(--font-fun); color: transparent;
       -webkit-text-stroke: 0.3cqw #555; letter-spacing: 0.08em;
     }
-    .wants { flex: 1; min-height: 0; display: grid; gap: 2.4cqw; grid-auto-rows: minmax(0, 1fr); }
+    .wants { flex: 1; min-height: 0; display: grid; gap: 1.6cqw 3cqw; grid-auto-rows: minmax(0, 1fr); }
     .wants.n1 { grid-template-columns: 1fr; padding: 0 22%; }
     .wants.n2, .wants.n3, .wants.n4 { grid-template-columns: repeat(2, 1fr); padding: 0 6%; }
     .wants.n5, .wants.n6 { grid-template-columns: repeat(3, 1fr); }
-    .want { min-height: 0; border: 0.35cqw solid #222; border-radius: 3cqw; padding: 1.6cqw; display: flex; flex-direction: column; align-items: center; gap: 1cqw; break-inside: avoid; }
+    .want { min-height: 0; padding: 0.6cqw; display: flex; flex-direction: column; align-items: center; gap: 1cqw; break-inside: avoid; }
     .want img { flex: 1; min-height: 0; width: 100%; object-fit: contain; }
     .want .n { font-size: 2.6cqw; font-weight: 700; text-align: center; line-height: 1.1; }
     .draw { flex: none; border: 0.35cqw dashed #999; border-radius: 3cqw; height: 15%; display: grid; place-items: start center; padding-top: 1.5cqw; color: #999; font-size: 2.8cqw; font-weight: 700; }
@@ -95,7 +95,6 @@
     <svg class="corner br" viewBox="0 0 120 120" aria-hidden="true"><use href="#holly"/></svg>
     <h1 class="dear">Dear Santa,</h1>
     <div class="line"><span>My name is</span> <span class="trace" id="name"></span></div>
-    <div class="line"><span>This year I have been</span> <span class="fill"></span></div>
     <div class="line"><span>I would love…</span></div>
     <div class="wants" id="wants"></div>
     <div class="draw">Draw a picture for Santa!</div>

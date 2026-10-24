@@ -1,6 +1,7 @@
-// PATCH  /api/admin/toys/:id  { title?, category?, status?, sort? }
+// PATCH  /api/admin/toys/:id  { title?, category?, status?, sort?, source_url? }
 // DELETE /api/admin/toys/:id  → removes the toy, its images and any wish-list entries
 import { getToyRow, requireCategory, shapeToy } from '../../../../../lib/catalog.js';
+import { parseUrl } from '../../../../../lib/fetch-product.js';
 import { HttpError, json, readJson, requireInt, requireString } from '../../../../../lib/http.js';
 import { deleteImages } from '../../../../../lib/images.js';
 
@@ -11,6 +12,10 @@ export async function onRequestPatch({ request, env, params }) {
   if ('title' in body) fields.title = requireString(body.title, 'title', { max: 80 });
   if ('category' in body) fields.category = requireCategory(body.category);
   if ('sort' in body) fields.sort = requireInt(body.sort, 'sort', { min: 0, max: 9999 });
+  if ('source_url' in body) {
+    const raw = requireString(body.source_url, 'source_url', { max: 2000, optional: true });
+    fields.source_url = raw ? parseUrl(raw).toString() : null;
+  }
   if ('status' in body) {
     if (!['draft', 'approved', 'hidden'].includes(body.status)) throw new HttpError(400, 'Unknown status');
     if (body.status === 'approved' && (!toy.stylized_key || !toy.coloring_key)) {

@@ -48,7 +48,7 @@ Kids never log in; a paired device shows its household's kids. A tablet can inst
 - `kid_apps(kid_id, app, enabled)` — per-kid app switches; missing row = app default from `lib/apps.js`
 - `ledger(id, kid_id, delta, kind 'award'|'spend'|'refund'|'adjust', reason, ref_type, ref_id, actor, created_at)` — **balance = SUM(delta)**; append-only, never edit rows
 - `toys(id, title, source_url, source_key, stylized_key, coloring_key, category, age_min, status 'draft'|'approved'|'hidden', created_by, created_at)`
-- `wishlist(kid_id, toy_id, added_at, PK(kid_id, toy_id))`
+- `wishlist(kid_id, toy_id, added_at, bought_by?, bought_at?, removed_at?, PK(kid_id, toy_id))` — bought fields are grown-up only; a bought wish the kid removes is kept with `removed_at`
 - `models(id, title, source_url, thumb_key, grams, print_minutes, slots 1–5, slot_labels JSON, base_cost, per_color_cost, cost_override, status)`
 - `filaments(id, name, material, hex, in_stock, sort)`
 - `print_requests(id, kid_id, model_id, slot_colors JSON, cost, status 'requested'|'printing'|'done'|'refunded', refund_reason, created_at, updated_at)`
@@ -69,6 +69,9 @@ Kids never log in; a paired device shows its household's kids. A tablet can inst
 3. **Coloring**: stylized image + "bold black outlines, no shading, white background" prompt → R2. (Derived from stylized so the two match.)
 4. Toy stays `draft` until an adult approves; regenerate either image from the review screen.
 - Model string in env `GEMINI_IMAGE_MODEL` (start with `gemini-3.1-flash-image`, Nano Banana 2). ~US$0.05/image.
+
+## Shopping list
+- Parent mode → Shopping: each kid's wishes with Buy links (the product page, or a link added later), **Mark bought** shared across all grown-ups, filter to still-to-buy. Kid endpoints never return bought status.
 
 ## Santa letter
 - Kid's wish list → letter page: "Dear Santa", kid name, grid of coloring images (≤6), writing lines, drawing space.

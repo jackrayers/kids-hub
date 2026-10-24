@@ -1,5 +1,6 @@
 // POST   /api/kid/wishlist  { kid_id, toy_id }  → add (up to WISHLIST_MAX)
 // DELETE /api/kid/wishlist  { kid_id, toy_id }  → remove
+// Rows a grown-up marked as bought are only hidden (removed_at), so the purchase isn't lost.
 import { WISHLIST_MAX } from '../../../lib/catalog.js';
 import { HttpError, json, readJson, requireString } from '../../../lib/http.js';
 import { requireOwnKid } from '../../../lib/kid-access.js';
@@ -13,7 +14,7 @@ async function parse(request, env, device) {
 
 async function listFor(env, kidId) {
   const { results } = await env.DB.prepare(`SELECT w.toy_id FROM wishlist w JOIN toys t ON t.id = w.toy_id
-    WHERE w.kid_id = ? AND t.status = 'approved' ORDER BY w.added_at`)
+    WHERE w.kid_id = ? AND w.removed_at IS NULL AND t.status = 'approved' ORDER BY w.added_at`)
     .bind(kidId).all();
   return results.map((r) => r.toy_id);
 }
@@ -25,9 +26,11 @@ export async function onRequestPost({ request, env, data }) {
 
   // Insert only while the list has room (single statement, so double-taps can't overfill it).
   const res = await env.DB.prepare(
-    `INSERT OR IGNORE INTO wishlist (kid_id, toy_id)
+    `INSERT INTO wishlist (kid_id, toy_id)
      SELECT ?, ? WHERE (SELECT COUNT(*) FROM wishlist w JOIN toys t ON t.id = w.toy_id
-       WHERE w.kid_id = ? AND t.status = 'approved') < ?`,
+       WHERE w.kid_id = ? AND w.removed_at IS NULL AND t.status = 'approved') < ?
+     ON CONFLICT (kid_id, toy_id) DO UPDATE SET removed_at = NULL, added_at = datetime('now')
+       WHERE wishlist.removed_at IS NOT NULL`,
   ).bind(kid.id, toyId, kid.id, WISHLIST_MAX).run();
   const wishlist = await listFor(env, kid.id);
   if (!res.meta.changes && !wishlist.includes(toyId)) {
@@ -38,6 +41,10 @@ export async function onRequestPost({ request, env, data }) {
 
 export async function onRequestDelete({ request, env, data }) {
   const { kid, toyId } = await parse(request, env, data.device);
-  await env.DB.prepare('DELETE FROM wishlist WHERE kid_id = ? AND toy_id = ?').bind(kid.id, toyId).run();
+  await env.DB.batch([
+    env.DB.prepare(`UPDATE wishlist SET removed_at = datetime('now')
+      WHERE kid_id = ? AND toy_id = ? AND bought_at IS NOT NULL AND removed_at IS NULL`).bind(kid.id, toyId),
+    env.DB.prepare('DELETE FROM wishlist WHERE kid_id = ? AND toy_id = ? AND bought_at IS NULL').bind(kid.id, toyId),
+  ]);
   return json({ wishlist: await listFor(env, kid.id) });
 }

@@ -27,9 +27,15 @@
       max-width: 1100px; margin: 0 auto; padding: 0 20px;
     }
     .shop-row h1 {
-      flex: 1; margin: 46px 0 0; font-size: clamp(2.6rem, 8vw, 4.6rem); --wm-outline: #0f3d29;
+      flex: 1; min-width: 0; margin: 46px 0 0; font-size: clamp(2.3rem, 8vw, 4.6rem); --wm-outline: #0f3d29;
     }
     .shop-row .back-btn { text-decoration: none; }
+    @media (max-width: 560px) {
+      .shop-row { flex-wrap: wrap; justify-content: center; }
+      .shop-row .back-btn { position: absolute; left: 16px; top: 2px; padding: 6px 14px; font-size: 1rem; }
+      .shop-row h1 { flex-basis: 100%; margin-top: 54px; }
+      .sleigh { width: 110px; top: calc(env(safe-area-inset-top) + 58px); }
+    }
     .sleigh { top: calc(env(safe-area-inset-top) + 66px); width: 140px; z-index: 1; opacity: 0.9; }
     .shop .edge { margin-top: 2px; height: 60px; }
     .filters { display: flex; gap: 10px; overflow-x: auto; max-width: 1100px; margin: 4px auto 20px; padding: 4px 2px 10px; scrollbar-width: none; }

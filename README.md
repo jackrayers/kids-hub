@@ -4,7 +4,7 @@ Tablet web apps for the kids: **Santa’s Catalog** (browse toys, build a printa
 
 ## Status
 - ✅ **Foundation** — households, kids (photo/emoji avatars), token ledger, tablet pairing, parent mode, Home Assistant award hook
-- ✅ **Santa’s Catalog** — add toys by link or photo, Gemini storybook + coloring-page pictures, kid browsing with hearts (6 max), printable letter to Santa, wish lists for grown-ups
+- ✅ **Santa’s Catalog** — add toys by link or photo, Gemini storybook + coloring-page pictures, kid browsing with hearts (6 max), printable letter to Santa, shopping list with Buy links and shared “bought” ticks
 - ⏳ Print Shop
 
 ## One-time Cloudflare setup
