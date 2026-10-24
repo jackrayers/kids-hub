@@ -1,7 +1,7 @@
 // POST /api/admin/toys/:id/generate  { kind: 'stylized' | 'coloring' }
 // stylized: product photo → storybook illustration
 // coloring: storybook illustration → black-and-white outline (so the two match)
-import { getToyRow, PROMPTS, shapeToy } from '../../../../../lib/catalog.js';
+import { getToyRow, PROMPTS, shapeToy, stylizedPrompt } from '../../../../../lib/catalog.js';
 import { generateImage } from '../../../../../lib/gemini.js';
 import { HttpError, json, readJson } from '../../../../../lib/http.js';
 import { deleteImages, getImage, putImage } from '../../../../../lib/images.js';
@@ -20,7 +20,7 @@ export async function onRequestPost({ request, env, params }) {
 
   let output;
   try {
-    output = await generateImage(env, { prompt: PROMPTS[kind], image: input, label: kind });
+    output = await generateImage(env, { prompt: kind === 'stylized' ? stylizedPrompt(toy) : PROMPTS[kind], image: input, label: kind });
   } catch (err) {
     await env.DB.prepare(`UPDATE toys SET gen_error = ?, updated_at = datetime('now') WHERE id = ?`)
       .bind(String(err.message).slice(0, 300), toy.id).run();

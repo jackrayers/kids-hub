@@ -1,7 +1,7 @@
-// PATCH  /api/admin/toys/:id  { title?, category?, status?, sort?, source_url? }
+// PATCH  /api/admin/toys/:id  { title?, category?, subject?, status?, sort?, source_url? }
 // DELETE /api/admin/toys/:id  → removes the toy, its images and any wish-list entries
 import { clearAudienceStmt } from '../../../../../lib/audience.js';
-import { getToyRow, requireCategory, shapeToy } from '../../../../../lib/catalog.js';
+import { getToyRow, requireCategory, shapeToy, SUBJECTS } from '../../../../../lib/catalog.js';
 import { parseUrl } from '../../../../../lib/fetch-product.js';
 import { HttpError, json, readJson, requireInt, requireString } from '../../../../../lib/http.js';
 import { deleteImages } from '../../../../../lib/images.js';
@@ -12,6 +12,10 @@ export async function onRequestPatch({ request, env, params }) {
   const fields = {};
   if ('title' in body) fields.title = requireString(body.title, 'title', { max: 80 });
   if ('category' in body) fields.category = await requireCategory(env.DB, body.category);
+  if ('subject' in body) {
+    if (!SUBJECTS.includes(body.subject)) throw new HttpError(400, `subject must be one of ${SUBJECTS.join(', ')}`);
+    fields.subject = body.subject;
+  }
   if ('sort' in body) fields.sort = requireInt(body.sort, 'sort', { min: 0, max: 9999 });
   if ('source_url' in body) {
     const raw = requireString(body.source_url, 'source_url', { max: 2000, optional: true });
