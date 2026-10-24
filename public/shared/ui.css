@@ -489,3 +489,14 @@ input.compact, select.compact { padding: 6px 9px; font-size: 0.9rem; }
 #cat-edit > summary::-webkit-details-marker { display: none; }
 #cat-edit > summary::after { content: ' ▸'; color: var(--ink-soft); }
 #cat-edit[open] > summary::after { content: ' ▾'; }
+
+/* Bulk toy import */
+.bulk-rows { margin: 10px 0 0; padding-left: 26px; font-size: 0.88rem; display: grid; gap: 4px; }
+.bulk-rows li { display: grid; grid-template-columns: minmax(0, 1fr) auto auto; gap: 8px; align-items: baseline; }
+.bulk-url { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.bulk-st { white-space: nowrap; }
+.bulk-bad .bulk-st, .bulk-failed .bulk-st { color: var(--red-deep, #b3261e); }
+.bulk-skip { opacity: 0.55; }
+.bulk-failed .bulk-st, .bulk-bad .bulk-st { grid-column: 1 / -1; white-space: normal; font-size: 0.82rem; }
+.bulk-done .bulk-st { color: var(--green-deep, #1f7a4d); }
+@media (max-width: 640px) { .bulk-rows li { grid-template-columns: 1fr; gap: 0; } }

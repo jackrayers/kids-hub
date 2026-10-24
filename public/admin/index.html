@@ -620,6 +620,132 @@
         </li>`;
     }
 
+    // Bulk import --------------------------------------------------------------
+    // One toy per line:  link | category | who can see it (optional, comma-separated kids or households)
+    const bulk = { open: false, text: '', rows: [], running: false, makeCats: true };
+    const norm = (x) => String(x || '').trim().toLowerCase();
+    function parseBulk(text) {
+      const known = new Set(catalog.toys.map((t) => t.source_url).filter(Boolean));
+      const seen = new Set();
+      return text.split('\n').map((raw, i) => ({ raw: raw.trim(), n: i + 1 })).filter((l) => l.raw && !l.raw.startsWith('#')).map(({ raw, n }) => {
+        const [urlPart, catPart = '', whoPart = ''] = raw.split('|').map((x) => x.trim());
+        const row = { n, url: urlPart, status: 'ready', msg: '', catName: catPart, kids: [], households: [], who: [] };
+        try { const u = new URL(urlPart); if (!/^https?:$/.test(u.protocol)) throw 0; row.url = u.toString(); } catch { return { ...row, status: 'bad', msg: 'Not a link' }; }
+        if (known.has(row.url)) return { ...row, status: 'skip', msg: 'Already in the catalog' };
+        if (seen.has(row.url)) return { ...row, status: 'skip', msg: 'Listed twice' };
+        seen.add(row.url);
+        if (catPart) {
+          const c = catalog.categories.find((x) => norm(x.name) === norm(catPart) || x.id === norm(catPart) || x.icon === catPart);
+          row.category = c?.id || null;
+          row.catLabel = c ? `${c.icon} ${c.name}` : `🆕 ${catPart}`;
+        } else {
+          row.category = $('#bulk-default')?.value || 'other';
+          row.catLabel = null;
+        }
+        for (const name of whoPart.split(',').map((x) => x.trim()).filter(Boolean)) {
+          const kid = state.kids.find((k) => norm(k.name) === norm(name));
+          const hh = state.households.find((h) => norm(h.name) === norm(name) || norm(h.name) === norm(name.replace(/^the\s+/i, '')));
+          if (kid) { row.kids.push(kid.id); row.who.push(kid.name); } else if (hh) { row.households.push(hh.id); row.who.push(hh.name); } else { row.status = 'bad'; row.msg = `Who is “${name}”?`; }
+        }
+        return row;
+      });
+    }
+    function bulkHtml() {
+      const st = { ready: '', bad: '⚠', skip: '↷', reading: '⏳ Reading…', painting: '🎨 Making pictures…', done: '✅', failed: '⚠' };
+      const counts = bulk.rows.reduce((a, r) => ((a[r.status] = (a[r.status] || 0) + 1), a), {});
+      const newCats = [...new Set(bulk.rows.filter((r) => r.status === 'ready' && r.catName && !r.category).map((r) => r.catName))];
+      return `
+        <p class="muted" style="margin:8px 0 6px;font-size:0.9rem">One toy per line: <code>link | category | who</code>. Category and who are optional. “Who” is kids’ or households’ names, comma-separated (leave it off for everyone). Lines starting with # are skipped.</p>
+        <textarea id="bulk-text" rows="8" style="width:100%;font:0.85rem/1.4 ui-monospace,monospace" placeholder="https://www.magnatiles.com/product/... | Building | Ava, Mia&#10;https://www.step2.com/products/... | Baby &amp; toddler | Leo" ${bulk.running ? 'disabled' : ''}>${esc(bulk.text)}</textarea>
+        <div class="row" style="gap:8px;margin-top:6px;flex-wrap:wrap">
+          <label class="muted" style="font-size:0.9rem">No category → <select id="bulk-default" class="compact">${categoryOptions('other')}</select></label>
+          <span style="flex:1"></span>
+          <button class="btn small" id="bulk-check" ${bulk.running ? 'disabled' : ''}>Check</button>
+          <button class="btn small primary" id="bulk-go" ${bulk.running || !counts.ready ? 'disabled' : ''}>${bulk.running ? 'Adding…' : `Add ${counts.ready || 0} toy${counts.ready === 1 ? '' : 's'}`}</button>
+        </div>
+        ${newCats.length ? `<p style="margin:8px 0 0;font-size:0.9rem">New categor${newCats.length === 1 ? 'y' : 'ies'}: <strong>${newCats.map(esc).join(', ')}</strong> — I’ll create ${newCats.length === 1 ? 'it' : 'them'} (🎁 icon; change it under Categories).</p>` : ''}
+        ${bulk.rows.length ? `<ol class="bulk-rows">${bulk.rows.map((r) => `
+          <li class="bulk-${r.status}">
+            <span class="bulk-url" title="${esc(r.url)}">${esc(r.title || r.url.replace(/^https?:\/\/(www\.)?/, ''))}</span>
+            <span class="muted">${esc(r.catLabel || '')}${r.who.length ? ` · 👪 ${esc(r.who.join(', '))}` : ''}</span>
+            <span class="bulk-st">${st[r.status]} ${esc(r.msg)}</span>
+          </li>`).join('')}</ol>` : ''}`;
+    }
+    function refreshBulk() {
+      const box = $('#bulk');
+      if (!box) return;
+      const ta = $('#bulk-text'); const hadFocus = document.activeElement === ta;
+      const def = $('#bulk-default')?.value;
+      box.innerHTML = '<summary class="muted">Add lots at once</summary>' + bulkHtml();
+      if (def) $('#bulk-default').value = def;
+      if (hadFocus) $('#bulk-text').focus();
+      bindBulk();
+    }
+    function bindBulk() {
+      $('#bulk').addEventListener('toggle', (e) => { bulk.open = e.target.open; });
+      $('#bulk-text').addEventListener('input', (e) => { bulk.text = e.target.value; });
+      $('#bulk-check').addEventListener('click', () => { bulk.rows = parseBulk(bulk.text); refreshBulk(); });
+      $('#bulk-go').addEventListener('click', runBulk);
+    }
+    async function runBulk() {
+      bulk.rows = parseBulk(bulk.text);
+      if (!bulk.rows.some((r) => r.status === 'ready')) { refreshBulk(); return; }
+      bulk.running = true;
+      refreshBulk();
+      // Create missing categories first.
+      const missing = [...new Set(bulk.rows.filter((r) => r.status === 'ready' && r.catName && !r.category).map((r) => r.catName))];
+      for (const name of missing) {
+        try {
+          const { id } = await adminApi('/categories', { method: 'POST', body: { name } });
+          bulk.rows.filter((r) => r.catName === name).forEach((r) => { r.category = id; r.catLabel = `🎁 ${name}`; });
+        } catch (err) {
+          bulk.rows.filter((r) => r.catName === name && !r.category).forEach((r) => { r.status = 'failed'; r.msg = err.message; });
+        }
+      }
+      await loadCatalog();
+      // Read each product page (one at a time — shops dislike bursts), then make pictures two at a time.
+      const painting = [];
+      let active = 0;
+      const paintQueue = [];
+      const pump = () => {
+        while (active < 2 && paintQueue.length) {
+          const r = paintQueue.shift();
+          active++;
+          r.status = 'painting'; refreshBulk();
+          painting.push(makePictures(r.toyId).then(async () => {
+            const t = catalog.toys.find((x) => x.id === r.toyId);
+            r.status = t?.image && t?.coloring ? 'done' : 'failed';
+            r.msg = r.status === 'done' ? 'Ready to approve' : (t?.gen_error && isBlocked(t.gen_error) ? 'Gemini won’t draw it — use the photo' : 'Pictures need a look');
+          }).finally(() => { active--; refreshBulk(); pump(); }));
+        }
+      };
+      for (const r of bulk.rows.filter((x) => x.status === 'ready')) {
+        r.status = 'reading'; refreshBulk();
+        try {
+          const { toy } = await adminApi('/toys/import', { method: 'POST', body: { url: r.url, category: r.category } });
+          r.toyId = toy.id; r.title = toy.title;
+          if (r.kids.length || r.households.length) {
+            await adminApi('/audience', { method: 'PUT', body: { item_type: 'toy', item_id: toy.id, kids: r.kids, households: r.households } });
+          }
+          paintQueue.push(r);
+          r.status = 'painting'; r.msg = 'Waiting…';
+          await loadCatalog();
+          pump();
+        } catch (err) {
+          r.status = 'failed';
+          r.msg = err.message;
+        }
+        refreshBulk();
+      }
+      while (paintQueue.length || active) await new Promise((res) => setTimeout(res, 500));
+      await Promise.allSettled(painting);
+      bulk.running = false;
+      const ok = bulk.rows.filter((r) => r.status === 'done').length;
+      toast(`${ok} toy${ok === 1 ? '' : 's'} ready to approve`);
+      await loadCatalog();
+      if (state.tab === 'catalog') renderCatalog(false);
+    }
+
     async function renderCatalog(fetch = true) {
       if (fetch) {
         main.innerHTML = '<p class="muted">Loading…</p>';
@@ -647,6 +773,10 @@
               <select name="category" aria-label="Category">${categoryOptions('other')}</select>
               <label class="btn">Choose photo<input type="file" name="photo" accept="image/*" hidden></label>
             </form>
+          </details>
+          <details id="bulk" style="margin-top:10px" ${bulk.open ? 'open' : ''}>
+            <summary class="muted">Add lots at once</summary>
+            ${bulkHtml()}
           </details>
         </div>
 
@@ -709,6 +839,8 @@
         if (searchHadFocus) { search.focus(); search.setSelectionRange(search.value.length, search.value.length); }
         search.addEventListener('input', () => { catalogSearch = search.value; renderCatalog(false); });
       }
+
+      bindBulk();
 
       // Categories
       $('#cat-edit').addEventListener('toggle', (e) => { catEditOpen = e.target.open; });
