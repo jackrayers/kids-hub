@@ -75,6 +75,20 @@
     </form>
   </dialog>
 
+  <script>
+    // Safety net: if parent mode's script fails to start, say so instead of sitting on "Loading…".
+    window.__khErrors = [];
+    addEventListener('error', (e) => { window.__khErrors.push(e.message || (e.target && e.target.src) || 'Unknown error'); }, true);
+    addEventListener('unhandledrejection', (e) => { window.__khErrors.push(String(e.reason && e.reason.message || e.reason)); });
+    setTimeout(() => {
+      if (window.__khBooted) return;
+      const main = document.getElementById('main');
+      main.innerHTML = '<div class="card"><h2>Parent mode didn’t start</h2>' +
+        '<p>Reload the page. If it keeps happening, send Claude this:</p>' +
+        '<p class="secret"></p><button class="btn primary" onclick="location.reload()">Reload</button></div>';
+      main.querySelector('.secret').textContent = (window.__khErrors.join(' | ') || 'No error reported') + ' — ' + navigator.userAgent;
+    }, 8000);
+  </script>
   <script type="module">
     import { adminApi, avatarHtml, esc, watchForUpdates } from '/shared/api.js';
     import { makeCutout } from '/shared/cutout.js';
@@ -595,10 +609,18 @@
         });
       });
 
-      $('#fit-all')?.addEventListener('click', async () => {
+      $('#fit-all')?.addEventListener('click', async (e) => {
+        const btn = e.currentTarget;
         const toys = catalog.toys.filter((t) => t.status !== 'hidden' && t.image && !generating.has(t.id));
-        for (const t of toys) await makePictures(t.id, ['cutout', 'trim-coloring']);
+        let n = 0;
+        for (const t of toys) {
+          n++;
+          const b = $('#fit-all');
+          if (b) { b.disabled = true; b.textContent = `Fitting ${n} of ${toys.length}…`; }
+          await makePictures(t.id, ['cutout', 'trim-coloring']);
+        }
         toast(`Fitted ${toys.length} toy${toys.length === 1 ? '' : 's'}`);
+        renderCatalog(false);
       });
 
       const toyOf = (el) => el.closest('[data-id]').dataset.id;
@@ -885,6 +907,7 @@
     // ---------- boot ----------
     (async () => {
       try {
+        window.__khBooted = true;
         state.me = await adminApi('/me');
         $('#who').textContent = `Signed in as ${state.me.adult.name || state.me.adult.email}`;
         await refreshCore();

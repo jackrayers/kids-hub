@@ -12,6 +12,8 @@ function loadImage(src) {
   });
 }
 
+const idle = () => new Promise((r) => setTimeout(r, 0));
+
 export async function makeLineArt(src, { size = 768, detail = 0.8 } = {}) {
   const img = await loadImage(src);
   const c = document.createElement('canvas');
@@ -48,7 +50,9 @@ export async function makeLineArt(src, { size = 768, detail = 0.8 } = {}) {
     }
     return out;
   };
+  await idle();
   const g = blur(blur(lum));
+  await idle();
 
   // Sobel edge strength.
   const mag = new Float32Array(n);
@@ -62,6 +66,7 @@ export async function makeLineArt(src, { size = 768, detail = 0.8 } = {}) {
       if (mag[p] > 8) values.push(mag[p]);
     }
   }
+  await idle();
   values.sort((a, b) => a - b);
   const threshold = Math.max(60, values[Math.floor(values.length * detail)] || 60);
 

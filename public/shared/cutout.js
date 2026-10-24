@@ -12,6 +12,8 @@ function loadImage(src) {
   });
 }
 
+const idle = () => new Promise((r) => setTimeout(r, 0)); // let the page breathe between heavy steps
+
 function median(values) {
   const sorted = [...values].sort((a, b) => a - b);
   return sorted[Math.floor(sorted.length / 2)];
@@ -23,13 +25,16 @@ function median(values) {
  */
 export async function makeCutout(src, { size = 768, tolerance = 34, soft = 72, padding = 0.025 } = {}) {
   const img = await loadImage(src);
-  const w = img.naturalWidth;
-  const h = img.naturalHeight;
+  // Work on at most 1024px: plenty for a 768px result, and fast on a phone.
+  const fit = Math.min(1, 1024 / Math.max(img.naturalWidth, img.naturalHeight));
+  const w = Math.round(img.naturalWidth * fit);
+  const h = Math.round(img.naturalHeight * fit);
   const canvas = document.createElement('canvas');
   canvas.width = w;
   canvas.height = h;
   const ctx = canvas.getContext('2d', { willReadFrequently: true });
-  ctx.drawImage(img, 0, 0);
+  ctx.drawImage(img, 0, 0, w, h);
+  await idle();
   const image = ctx.getImageData(0, 0, w, h);
   const px = image.data;
 
@@ -60,17 +65,25 @@ export async function makeCutout(src, { size = 768, tolerance = 34, soft = 72, p
     if (y < h - 1) seed(x, y + 1);
   }
   const removed = tail / (w * h);
+  await idle();
 
-  // Clear the background; feather pixels that touch it (anti-aliased edges).
-  const nearBg = (x, y) => {
-    for (let dy = -2; dy <= 2; dy++) {
-      for (let dx = -2; dx <= 2; dx++) {
-        const nx = x + dx; const ny = y + dy;
-        if (nx >= 0 && ny >= 0 && nx < w && ny < h && isBg[ny * w + nx]) return true;
-      }
+  // Pixels within 2px of the background form the edge band (two cheap passes, not a 5×5 scan per pixel).
+  const band = new Uint8Array(w * h);
+  for (let y = 0; y < h; y++) {
+    for (let x = 0; x < w; x++) {
+      if (!isBg[y * w + x]) continue;
+      for (let dx = -2; dx <= 2; dx++) { const nx = x + dx; if (nx >= 0 && nx < w) band[y * w + nx] = 1; }
     }
-    return false;
-  };
+  }
+  const nearRow = new Uint8Array(w * h);
+  for (let y = 0; y < h; y++) {
+    for (let x = 0; x < w; x++) {
+      if (!band[y * w + x]) continue;
+      for (let dy = -2; dy <= 2; dy++) { const ny = y + dy; if (ny >= 0 && ny < h) nearRow[ny * w + x] = 1; }
+    }
+  }
+  const nearBg = (x, y) => nearRow[y * w + x] === 1;
+  await idle();
   let minX = w; let minY = h; let maxX = -1; let maxY = -1;
   for (let y = 0; y < h; y++) {
     for (let x = 0; x < w; x++) {

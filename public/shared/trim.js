@@ -12,13 +12,14 @@ function loadImage(src) {
 
 export async function trimToSquare(src, { size = 768, padding = 0.04, threshold = 236 } = {}) {
   const img = await loadImage(src);
-  const w = img.naturalWidth; const h = img.naturalHeight;
+  const fit = Math.min(1, 1024 / Math.max(img.naturalWidth, img.naturalHeight));
+  const w = Math.round(img.naturalWidth * fit); const h = Math.round(img.naturalHeight * fit);
   const c = document.createElement('canvas');
   c.width = w; c.height = h;
   const ctx = c.getContext('2d', { willReadFrequently: true });
   ctx.fillStyle = '#fff';
   ctx.fillRect(0, 0, w, h);
-  ctx.drawImage(img, 0, 0);
+  ctx.drawImage(img, 0, 0, w, h);
   const { data } = ctx.getImageData(0, 0, w, h);
 
   // Bounding box of anything noticeably darker than white (ignores faint specks at the edges).
