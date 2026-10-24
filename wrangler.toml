@@ -4,7 +4,7 @@ compatibility_date = "2026-10-01"
 
 [vars]
 # Cloudflare Access team domain and the Access application's AUD tag.
-# Set these in the Pages dashboard (Settings → Variables) for production.
+# Fill these in here: Pages reads plain vars from this file, not the dashboard.
 ACCESS_TEAM_DOMAIN = ""
 ACCESS_AUD = ""
 
