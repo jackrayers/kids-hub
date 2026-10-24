@@ -22,8 +22,12 @@ Tablet web apps for the kids: **Santa’s Catalog** (browse toys, build a printa
    - Owner email as a secret: `npx wrangler pages secret put OWNER_EMAIL --project-name kids-hub` (you become owner on first sign-in).
 8. Deploy: `npm run deploy` (or push to `main` if connected to Git).
 
+## Deploys (no Mac needed)
+- **Code:** every push to `main` deploys through Cloudflare Pages.
+- **Database:** `.github/workflows/migrate.yml` applies new files in `migrations/` on push. One-time: add repo secrets `CLOUDFLARE_API_TOKEN` (token with *Account → D1 → Edit*) and `CLOUDFLARE_ACCOUNT_ID`. Re-run any time from GitHub → Actions → *Migrate database* → *Run workflow*.
+
 ## Santa’s Catalog setup
-1. `npm run db:migrate:remote` (adds the toys and wish-list tables).
+1. Migrations run automatically (see Deploys).
 2. `npx wrangler pages secret put GEMINI_API_KEY --project-name kids-hub`, then retry the latest deployment.
 3. Optional: set `GEMINI_IMAGE_MODEL` in `wrangler.toml` `[vars]` (default `gemini-3.1-flash-image`).
 
