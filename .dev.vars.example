@@ -1,0 +1,5 @@
+# Copy to .dev.vars for `npm run dev`. Never commit .dev.vars.
+# Skips Cloudflare Access on localhost and signs you in as this email.
+DEV_ADMIN_EMAIL=you@example.com
+# Becomes the owner on first sign-in (set this in Pages production too).
+OWNER_EMAIL=you@example.com

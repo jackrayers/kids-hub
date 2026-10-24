@@ -1,0 +1,108 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>Kids Hub</title>
+  <meta name="theme-color" content="#fff8ee">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-title" content="Kids Hub">
+  <link rel="manifest" href="/manifest.webmanifest">
+  <link rel="icon" href="/icons/icon.svg" type="image/svg+xml">
+  <link rel="apple-touch-icon" href="/icons/icon-180.png">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/shared/ui.css">
+</head>
+<body class="kid">
+  <!-- Screen 1: who's playing? -->
+  <section id="picker" hidden>
+    <h1>Who’s playing?</h1>
+    <div class="kid-grid" id="kid-grid"></div>
+    <p class="empty" id="no-kids" hidden>No kids yet — ask a grown-up to add you!</p>
+  </section>
+
+  <!-- Screen 2: pick an app -->
+  <section id="hub" hidden>
+    <div class="hub-head">
+      <div class="hub-who" id="hub-who"></div>
+      <button class="back-btn" id="switch-kid" type="button">↩ Switch</button>
+    </div>
+    <div class="doors">
+      <a class="door santa soon" href="#" aria-disabled="true" id="door-santa">
+        <span class="icon">🎅</span>
+        <span class="label">Santa’s Catalog</span>
+        <span class="sub">Pick toys for your letter</span>
+      </a>
+      <a class="door print soon" href="#" aria-disabled="true" id="door-print">
+        <span class="icon">🧩</span>
+        <span class="label">Print Shop</span>
+        <span class="sub">Spend your stars</span>
+      </a>
+    </div>
+  </section>
+
+  <p class="empty" id="loading">Loading…</p>
+  <a class="grownup-link" href="/admin/" aria-label="Grown-ups">⚙︎</a>
+
+  <script type="module">
+    import { kidApi, avatarHtml, esc, session, registerServiceWorker } from '/shared/api.js';
+
+    const $ = (id) => document.getElementById(id);
+    let kids = [];
+
+    function showPicker() {
+      session.remove('kh.kidId');
+      $('hub').hidden = true;
+      $('picker').hidden = false;
+      $('no-kids').hidden = kids.length > 0;
+      $('kid-grid').innerHTML = kids.map((k) => `
+        <button class="kid-tile" type="button" data-id="${esc(k.id)}">
+          ${avatarHtml(k)}
+          <span class="name">${esc(k.name)}</span>
+        </button>`).join('');
+    }
+
+    function showHub(kid) {
+      session.set('kh.kidId', kid.id);
+      $('picker').hidden = true;
+      $('hub').hidden = false;
+      $('hub-who').innerHTML = `
+        ${avatarHtml(kid)}
+        <div>
+          <div class="name">${esc(kid.name)}</div>
+          <span class="stars" aria-label="${kid.balance} stars">⭐ ${kid.balance}</span>
+        </div>`;
+    }
+
+    $('kid-grid').addEventListener('click', (e) => {
+      const tile = e.target.closest('.kid-tile');
+      if (!tile) return;
+      const kid = kids.find((k) => k.id === tile.dataset.id);
+      if (kid) showHub(kid);
+    });
+    $('switch-kid').addEventListener('click', showPicker);
+    document.querySelectorAll('.door[aria-disabled="true"]').forEach((d) =>
+      d.addEventListener('click', (e) => e.preventDefault()));
+
+    async function load() {
+      try {
+        const data = await kidApi('/household');
+        kids = data.kids;
+        document.title = `${data.household?.name || 'Kids'} Hub`;
+        $('loading').hidden = true;
+        const current = kids.find((k) => k.id === session.get('kh.kidId'));
+        current ? showHub(current) : showPicker();
+      } catch (err) {
+        $('loading').textContent = err.message;
+      }
+    }
+
+    // Refresh balances when the tablet wakes up.
+    document.addEventListener('visibilitychange', () => { if (!document.hidden) load(); });
+    load();
+    registerServiceWorker();
+  </script>
+</body>
+</html>

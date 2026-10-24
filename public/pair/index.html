@@ -1,0 +1,63 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>Set up this tablet · Kids Hub</title>
+  <meta name="theme-color" content="#fff8ee">
+  <link rel="manifest" href="/manifest.webmanifest">
+  <link rel="icon" href="/icons/icon.svg" type="image/svg+xml">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/shared/ui.css">
+</head>
+<body class="kid">
+  <form class="center-card" id="pair-form" autocomplete="off">
+    <div style="font-size:4rem;line-height:1">🎁</div>
+    <h1 style="margin:10px 0 6px">Set up this tablet</h1>
+    <p style="font-size:1.15rem;color:var(--ink-soft);margin:0 0 20px">
+      A grown-up can get a code from<br><strong>Parent mode → Tablets</strong>.
+    </p>
+    <input class="code-input" id="code" name="code" maxlength="6" inputmode="text"
+           autocapitalize="characters" autocorrect="off" spellcheck="false"
+           placeholder="ABC123" aria-label="Pairing code" required>
+    <button class="big-btn" type="submit" id="go">Let’s go!</button>
+    <p class="msg" id="msg" role="alert"></p>
+  </form>
+
+  <script type="module">
+    import { pairDevice, deviceToken } from '/shared/api.js';
+
+    const form = document.getElementById('pair-form');
+    const input = document.getElementById('code');
+    const msg = document.getElementById('msg');
+    const go = document.getElementById('go');
+
+    input.addEventListener('input', () => {
+      input.value = input.value.toUpperCase().replace(/[^A-Z0-9]/g, '');
+    });
+
+    form.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      if (input.value.length < 6) { msg.textContent = 'The code has 6 letters and numbers.'; return; }
+      go.disabled = true;
+      msg.textContent = '';
+      try {
+        const { token } = await pairDevice(input.value);
+        deviceToken.set(token);
+        if (deviceToken.get() !== token) {
+          msg.textContent = 'This browser won’t save the setup. Try turning off private browsing.';
+          go.disabled = false;
+          return;
+        }
+        location.href = '/';
+      } catch (err) {
+        msg.textContent = err.message;
+        go.disabled = false;
+      }
+    });
+    input.focus();
+  </script>
+</body>
+</html>

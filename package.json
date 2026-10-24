@@ -1,0 +1,14 @@
+{
+  "name": "kids-hub",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "wrangler pages dev --port 8788",
+    "db:migrate:local": "wrangler d1 migrations apply kids-hub --local",
+    "db:migrate:remote": "wrangler d1 migrations apply kids-hub --remote",
+    "deploy": "wrangler pages deploy"
+  },
+  "devDependencies": {
+    "wrangler": "^4.152.0"
+  }
+}

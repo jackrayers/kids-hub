@@ -1,0 +1,19 @@
+name = "kids-hub"
+pages_build_output_dir = "public"
+compatibility_date = "2026-10-01"
+
+[vars]
+# Cloudflare Access team domain and the Access application's AUD tag.
+# Set these in the Pages dashboard (Settings → Variables) for production.
+ACCESS_TEAM_DOMAIN = ""
+ACCESS_AUD = ""
+
+[[d1_databases]]
+binding = "DB"
+database_name = "kids-hub"
+database_id = "REPLACE_WITH_D1_DATABASE_ID"
+migrations_dir = "migrations"
+
+[[r2_buckets]]
+binding = "IMAGES"
+bucket_name = "kids-hub-images"

@@ -1,0 +1,463 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>Parent mode · Kids Hub</title>
+  <meta name="theme-color" content="#ffffff">
+  <link rel="icon" href="/icons/icon.svg" type="image/svg+xml">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/shared/ui.css">
+</head>
+<body class="grownup">
+  <header class="gu-bar">
+    <div class="gu-bar-top">
+      <div>
+        <h1 class="gu-title">Parent mode</h1>
+        <div class="gu-who" id="who"></div>
+      </div>
+      <a class="btn small" href="/">Kid view</a>
+    </div>
+    <nav class="tabs" role="tablist" id="tabs">
+      <button role="tab" data-tab="tokens" aria-selected="true">Tokens</button>
+      <button role="tab" data-tab="kids">Kids</button>
+      <button role="tab" data-tab="tablets">Tablets</button>
+      <button role="tab" data-tab="grownups">Grown-ups</button>
+    </nav>
+  </header>
+
+  <main class="gu" id="main"><p class="muted">Loading…</p></main>
+
+  <dialog id="kid-dialog">
+    <form method="dialog" id="kid-form">
+      <h2 style="margin:0" id="kid-dialog-title">Kid</h2>
+      <div id="kid-avatar-preview"></div>
+      <div class="row" style="justify-content:center">
+        <label class="btn small">Upload photo<input type="file" accept="image/*" id="kid-photo" hidden></label>
+        <button class="btn small danger" type="button" id="kid-photo-remove">Remove photo</button>
+      </div>
+      <label class="field">Name<input name="name" maxlength="40" required></label>
+      <div class="row">
+        <label class="field grow">Emoji (if no photo)<input name="emoji" maxlength="8" placeholder="🦄"></label>
+        <label class="field">Colour<input name="color" type="color" value="#f5b82e"></label>
+      </div>
+      <div class="row">
+        <label class="field grow">Birth year<input name="birth_year" type="number" inputmode="numeric" min="2008"></label>
+        <label class="field grow">Screen style
+          <select name="ui_mode">
+            <option value="picture">Pictures (pre-reader)</option>
+            <option value="reader">Pictures + words</option>
+          </select>
+        </label>
+      </div>
+      <label class="field">Household<select name="household_id" id="kid-household"></select></label>
+      <label class="row" style="gap:8px"><input type="checkbox" name="active" checked> Show on tablets</label>
+      <div class="row" style="justify-content:flex-end">
+        <button class="btn" value="cancel" formnovalidate>Cancel</button>
+        <button class="btn primary" value="save" id="kid-save">Save</button>
+      </div>
+    </form>
+  </dialog>
+
+  <script type="module">
+    import { adminApi, avatarHtml, esc } from '/shared/api.js';
+
+    const $ = (sel, root = document) => root.querySelector(sel);
+    const main = $('#main');
+    const state = { me: null, households: [], kids: [], tab: 'tokens', selectedKids: new Set(), editingKid: null };
+
+    // ---------- helpers ----------
+    function toast(text, isError = false) {
+      const t = document.createElement('div');
+      t.className = 'toast' + (isError ? ' error' : '');
+      t.textContent = text;
+      document.body.append(t);
+      setTimeout(() => t.remove(), 3200);
+    }
+    async function run(fn) {
+      try { return await fn(); } catch (err) { toast(err.message, true); throw err; }
+    }
+    const when = (iso) => {
+      if (!iso) return '—';
+      const d = new Date(iso.endsWith('Z') ? iso : iso.replace(' ', 'T') + 'Z');
+      return d.toLocaleString([], { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' });
+    };
+    const householdOptions = (selected) => state.households
+      .map((h) => `<option value="${esc(h.id)}" ${h.id === selected ? 'selected' : ''}>${esc(h.name)}</option>`).join('');
+    const defaultHousehold = () => state.me.adult.household_id || state.households[0]?.id;
+    const isOwner = () => state.me.adult.role === 'owner';
+
+    async function refreshCore() {
+      const [h, k] = await Promise.all([adminApi('/households'), adminApi('/kids?all=1')]);
+      state.households = h.households;
+      state.kids = k.kids;
+    }
+
+    // ---------- tabs ----------
+    $('#tabs').addEventListener('click', (e) => {
+      const b = e.target.closest('button[data-tab]');
+      if (!b) return;
+      state.tab = b.dataset.tab;
+      document.querySelectorAll('#tabs button').forEach((x) => x.setAttribute('aria-selected', x === b));
+      render();
+    });
+
+    function render() {
+      if (!state.households.length) return renderSetup();
+      ({ tokens: renderTokens, kids: renderKids, tablets: renderTablets, grownups: renderGrownups })[state.tab]();
+    }
+
+    // ---------- first run ----------
+    function renderSetup() {
+      main.innerHTML = `
+        <div class="card">
+          <h2>Welcome! Start by naming your household</h2>
+          <p class="muted">Each family with its own tablets gets a household (yours, your sister’s…).</p>
+          <form class="row" id="hh-form">
+            <input class="grow" name="name" placeholder="The Rayers" required maxlength="60">
+            <button class="btn primary">Create</button>
+          </form>
+        </div>`;
+      $('#hh-form').addEventListener('submit', (e) => {
+        e.preventDefault();
+        run(async () => {
+          await adminApi('/households', { method: 'POST', body: { name: e.target.elements.name.value } });
+          state.me = await adminApi('/me');
+          await refreshCore();
+          state.tab = 'kids';
+          document.querySelectorAll('#tabs button').forEach((x) => x.setAttribute('aria-selected', x.dataset.tab === 'kids'));
+          render();
+        });
+      });
+    }
+
+    // ---------- tokens ----------
+    async function renderTokens() {
+      const active = state.kids.filter((k) => k.active);
+      main.innerHTML = `
+        <div class="card">
+          <h2>Give or take tokens</h2>
+          ${active.length ? '' : '<p class="muted">Add some kids first.</p>'}
+          <div class="chips" id="kid-chips">
+            ${active.map((k) => `
+              <button class="chip" type="button" data-id="${esc(k.id)}" aria-pressed="${state.selectedKids.has(k.id)}">
+                ${avatarHtml(k)} ${esc(k.name)} <span class="muted">⭐ ${k.balance}</span>
+              </button>`).join('')}
+          </div>
+          <div class="row" style="margin-top:14px">
+            <input class="grow" id="reason" placeholder="What for? (e.g. Cleaned up toys)" maxlength="120">
+          </div>
+          <div class="amount-btns" style="margin-top:12px">
+            ${[1, 2, 3, 5, 10].map((n) => `<button class="btn" data-delta="${n}">+${n}</button>`).join('')}
+            <input id="custom-delta" type="number" inputmode="numeric" placeholder="±" style="width:80px">
+            <button class="btn" id="custom-go">Apply</button>
+          </div>
+        </div>
+        <div class="card"><h2>Recent</h2><ul class="list" id="ledger"><li class="muted">Loading…</li></ul></div>`;
+
+      $('#kid-chips').addEventListener('click', (e) => {
+        const c = e.target.closest('.chip');
+        if (!c) return;
+        state.selectedKids.has(c.dataset.id) ? state.selectedKids.delete(c.dataset.id) : state.selectedKids.add(c.dataset.id);
+        c.setAttribute('aria-pressed', state.selectedKids.has(c.dataset.id));
+      });
+
+      const apply = (delta) => run(async () => {
+        if (!state.selectedKids.size) return toast('Tap one or more kids first', true);
+        if (!Number.isInteger(delta) || delta === 0) return toast('Enter a whole number', true);
+        const reason = $('#reason').value.trim() || null;
+        for (const kidId of state.selectedKids) {
+          await adminApi('/ledger', { method: 'POST', body: { kid_id: kidId, delta, reason, kind: delta > 0 ? 'award' : 'adjust' } });
+        }
+        toast(`${delta > 0 ? '+' : ''}${delta} for ${state.selectedKids.size} kid${state.selectedKids.size > 1 ? 's' : ''}`);
+        await refreshCore();
+        renderTokens();
+      });
+      main.querySelectorAll('[data-delta]').forEach((b) => b.addEventListener('click', () => apply(Number(b.dataset.delta))));
+      $('#custom-go').addEventListener('click', () => apply(Number($('#custom-delta').value)));
+
+      const { entries } = await run(() => adminApi('/ledger?limit=40'));
+      $('#ledger').innerHTML = entries.length ? entries.map((e) => `
+        <li>
+          <span class="${e.delta > 0 ? 'delta-pos' : 'delta-neg'}" style="width:48px">${e.delta > 0 ? '+' : ''}${e.delta}</span>
+          <div class="main">
+            <div><strong>${esc(e.kid_name)}</strong> · ${esc(e.reason || e.kind)}</div>
+            <div class="meta">${esc(when(e.created_at))} · ${esc(e.actor)}</div>
+          </div>
+        </li>`).join('') : '<li class="muted">No tokens yet.</li>';
+    }
+
+    // ---------- kids ----------
+    function renderKids() {
+      main.innerHTML = state.households.map((h) => {
+        const kids = state.kids.filter((k) => k.household_id === h.id);
+        return `
+          <div class="card">
+            <div class="row" style="justify-content:space-between;margin-bottom:6px">
+              <h2 style="margin:0">${esc(h.name)}</h2>
+              <button class="btn small" data-add-kid="${esc(h.id)}">+ Add kid</button>
+            </div>
+            <ul class="list">
+              ${kids.length ? kids.map((k) => `
+                <li>
+                  ${avatarHtml(k)}
+                  <div class="main">
+                    <div><strong>${esc(k.name)}</strong> ${k.active ? '' : '<span class="pill off">hidden</span>'}</div>
+                    <div class="meta">${k.birth_year ? `born ${k.birth_year} · ` : ''}${k.ui_mode === 'reader' ? 'pictures + words' : 'pictures'} · ⭐ ${k.balance}</div>
+                  </div>
+                  <button class="btn small" data-edit-kid="${esc(k.id)}">Edit</button>
+                </li>`).join('') : '<li class="muted">No kids yet.</li>'}
+            </ul>
+          </div>`;
+      }).join('') + `
+        <div class="card">
+          <h2>Add another household</h2>
+          <form class="row" id="hh-form">
+            <input class="grow" name="name" placeholder="e.g. Aunt Sarah’s house" required maxlength="60">
+            <button class="btn">Add</button>
+          </form>
+        </div>`;
+
+      main.querySelectorAll('[data-add-kid]').forEach((b) => b.addEventListener('click', () => openKid(null, b.dataset.addKid)));
+      main.querySelectorAll('[data-edit-kid]').forEach((b) => b.addEventListener('click', () =>
+        openKid(state.kids.find((k) => k.id === b.dataset.editKid))));
+      $('#hh-form').addEventListener('submit', (e) => {
+        e.preventDefault();
+        run(async () => {
+          await adminApi('/households', { method: 'POST', body: { name: e.target.elements.name.value } });
+          await refreshCore();
+          renderKids();
+        });
+      });
+    }
+
+    const kidDialog = $('#kid-dialog');
+    const kidForm = $('#kid-form');
+    function paintKidPreview() {
+      const k = state.editingKid || {};
+      const preview = { ...k, name: kidForm.elements.name.value || '?', emoji: kidForm.elements.emoji.value, color: kidForm.elements.color.value };
+      $('#kid-avatar-preview').innerHTML = avatarHtml(preview);
+      $('#kid-photo-remove').hidden = !k.avatar_url;
+      $('#kid-photo').closest('label').hidden = !k.id; // photo upload after first save
+    }
+    function openKid(kid, householdId) {
+      state.editingKid = kid;
+      $('#kid-dialog-title').textContent = kid ? `Edit ${kid.name}` : 'Add a kid';
+      $('#kid-household').innerHTML = householdOptions(kid?.household_id || householdId);
+      kidForm.elements.name.value = kid?.name || '';
+      kidForm.elements.emoji.value = kid?.emoji || '';
+      kidForm.elements.color.value = kid?.color || '#f5b82e';
+      kidForm.elements.birth_year.value = kid?.birth_year || '';
+      kidForm.elements.ui_mode.value = kid?.ui_mode || 'picture';
+      kidForm.elements.active.checked = kid ? kid.active : true;
+      paintKidPreview();
+      kidDialog.showModal();
+    }
+    ['name', 'emoji', 'color'].forEach((n) => kidForm.elements[n].addEventListener('input', paintKidPreview));
+
+    kidForm.addEventListener('submit', (e) => {
+      if (e.submitter?.value !== 'save') return;
+      e.preventDefault();
+      const f = kidForm;
+      const body = {
+        name: f.elements.name.value,
+        emoji: f.elements.emoji.value || null,
+        color: f.elements.color.value,
+        birth_year: f.elements.birth_year.value ? Number(f.elements.birth_year.value) : null,
+        ui_mode: f.elements.ui_mode.value,
+        household_id: f.elements.household_id.value,
+        active: f.elements.active.checked,
+      };
+      run(async () => {
+        if (state.editingKid) await adminApi(`/kids/${state.editingKid.id}`, { method: 'PATCH', body });
+        else await adminApi('/kids', { method: 'POST', body });
+        kidDialog.close();
+        await refreshCore();
+        render();
+        toast('Saved');
+      });
+    });
+
+    // Resize photos on the device so uploads stay small.
+    async function resizeImage(file, max = 512) {
+      const bitmap = await createImageBitmap(file);
+      const scale = Math.min(1, max / Math.max(bitmap.width, bitmap.height));
+      const side = Math.round(Math.min(bitmap.width, bitmap.height) * scale);
+      // Square centre crop for round avatars.
+      const canvas = document.createElement('canvas');
+      canvas.width = canvas.height = side;
+      const srcSide = Math.min(bitmap.width, bitmap.height);
+      canvas.getContext('2d').drawImage(bitmap,
+        (bitmap.width - srcSide) / 2, (bitmap.height - srcSide) / 2, srcSide, srcSide, 0, 0, side, side);
+      return new Promise((res) => canvas.toBlob(res, 'image/jpeg', 0.85));
+    }
+    $('#kid-photo').addEventListener('change', (e) => {
+      const file = e.target.files[0];
+      e.target.value = '';
+      if (!file || !state.editingKid) return;
+      run(async () => {
+        const blob = await resizeImage(file);
+        const { kid } = await adminApi(`/kids/${state.editingKid.id}/avatar`, { method: 'POST', body: blob });
+        state.editingKid = kid;
+        paintKidPreview();
+        await refreshCore();
+        render();
+      });
+    });
+    $('#kid-photo-remove').addEventListener('click', () => run(async () => {
+      const { kid } = await adminApi(`/kids/${state.editingKid.id}/avatar`, { method: 'DELETE' });
+      state.editingKid = kid;
+      paintKidPreview();
+      await refreshCore();
+      render();
+    }));
+
+    // ---------- tablets ----------
+    let countdown;
+    async function renderTablets() {
+      clearInterval(countdown);
+      main.innerHTML = `
+        <div class="card">
+          <h2>Set up a tablet</h2>
+          <form id="pair-form" style="display:grid;gap:10px">
+            <div class="row">
+              <label class="field grow">Household<select name="household_id">${householdOptions(defaultHousehold())}</select></label>
+              <label class="field grow">Tablet name<input name="device_name" placeholder="Playroom iPad" required maxlength="40"></label>
+            </div>
+            <div><button class="btn primary">Get a code</button></div>
+          </form>
+          <div id="code-out"></div>
+        </div>
+        <div class="card"><h2>Paired tablets</h2><ul class="list" id="devices"><li class="muted">Loading…</li></ul></div>`;
+
+      $('#pair-form').addEventListener('submit', (e) => {
+        e.preventDefault();
+        run(async () => {
+          const r = await adminApi('/pairing-codes', { method: 'POST', body: {
+            household_id: e.target.elements.household_id.value, device_name: e.target.elements.device_name.value } });
+          const out = $('#code-out');
+          const expires = Date.parse(r.expires_at);
+          out.innerHTML = `
+            <div class="code-display">${esc(r.code)}</div>
+            <p class="muted" style="text-align:center">On the tablet, open <strong>${esc(location.host)}/pair</strong> and enter this code.
+              <span id="code-ttl"></span></p>`;
+          clearInterval(countdown);
+          const tick = () => {
+            const s = Math.max(0, Math.round((expires - Date.now()) / 1000));
+            const ttl = $('#code-ttl');
+            if (!ttl) return clearInterval(countdown);
+            ttl.textContent = s ? `Expires in ${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}.` : 'Expired.';
+            if (!s) clearInterval(countdown);
+          };
+          tick();
+          countdown = setInterval(tick, 1000);
+        });
+      });
+
+      const { devices } = await run(() => adminApi('/devices'));
+      $('#devices').innerHTML = devices.length ? devices.map((d) => `
+        <li>
+          <div class="main">
+            <div><strong>${esc(d.name)}</strong> · ${esc(d.household_name)} ${d.revoked_at ? '<span class="pill off">removed</span>' : ''}</div>
+            <div class="meta">Paired ${esc(when(d.created_at))} by ${esc(d.created_by)} · last seen ${esc(when(d.last_seen))}</div>
+          </div>
+          ${d.revoked_at ? '' : `<button class="btn small danger" data-revoke="${esc(d.id)}">Remove</button>`}
+        </li>`).join('') : '<li class="muted">No tablets yet.</li>';
+      main.querySelectorAll('[data-revoke]').forEach((b) => b.addEventListener('click', () => {
+        if (!confirm('Remove this tablet? It will need a new code to work again.')) return;
+        run(async () => { await adminApi(`/devices/${b.dataset.revoke}`, { method: 'DELETE' }); renderTablets(); });
+      }));
+    }
+
+    // ---------- grown-ups & keys ----------
+    async function renderGrownups() {
+      const [{ adults }, keys] = await Promise.all([
+        run(() => adminApi('/adults')),
+        isOwner() ? run(() => adminApi('/api-keys')) : Promise.resolve({ api_keys: [] }),
+      ]);
+      main.innerHTML = `
+        <div class="card">
+          <h2>Grown-ups</h2>
+          <p class="muted">Anyone here can give tokens and set up tablets. They also need to be allowed in the Cloudflare Access policy.</p>
+          <ul class="list">
+            ${adults.map((a) => `
+              <li>
+                <div class="main">
+                  <div><strong>${esc(a.name || a.email)}</strong> ${a.role === 'owner' ? '<span class="pill">owner</span>' : ''}</div>
+                  <div class="meta">${esc(a.email)}${a.household_name ? ' · ' + esc(a.household_name) : ''}</div>
+                </div>
+                ${isOwner() && a.role !== 'owner' ? `<button class="btn small danger" data-remove="${esc(a.email)}">Remove</button>` : ''}
+              </li>`).join('')}
+          </ul>
+          ${isOwner() ? `
+            <form id="adult-form" class="row" style="margin-top:12px">
+              <input class="grow" name="email" type="email" placeholder="email@example.com" required>
+              <input class="grow" name="name" placeholder="Name">
+              <select name="household_id">${householdOptions(null)}</select>
+              <button class="btn primary">Add</button>
+            </form>` : ''}
+        </div>
+        ${isOwner() ? `
+          <div class="card">
+            <h2>Integration keys</h2>
+            <p class="muted">For Home Assistant chores later: <code>POST /api/hook/award</code> with header <code>X-Api-Key</code>.</p>
+            <ul class="list">
+              ${keys.api_keys.map((k) => `
+                <li>
+                  <div class="main">
+                    <div><strong>${esc(k.name)}</strong> <span class="pill">${esc(k.scopes)}</span> ${k.revoked_at ? '<span class="pill off">revoked</span>' : ''}</div>
+                    <div class="meta">Created ${esc(when(k.created_at))}</div>
+                  </div>
+                  ${k.revoked_at ? '' : `<button class="btn small danger" data-revoke-key="${esc(k.id)}">Revoke</button>`}
+                </li>`).join('') || '<li class="muted">No keys yet.</li>'}
+            </ul>
+            <form id="key-form" class="row" style="margin-top:12px">
+              <input class="grow" name="name" placeholder="Home Assistant" required maxlength="40">
+              <button class="btn">Create key</button>
+            </form>
+            <div id="key-out"></div>
+          </div>` : ''}`;
+
+      main.querySelectorAll('[data-remove]').forEach((b) => b.addEventListener('click', () => {
+        if (!confirm(`Remove ${b.dataset.remove}?`)) return;
+        run(async () => { await adminApi(`/adults/${encodeURIComponent(b.dataset.remove)}`, { method: 'DELETE' }); renderGrownups(); });
+      }));
+      main.querySelectorAll('[data-revoke-key]').forEach((b) => b.addEventListener('click', () => {
+        if (!confirm('Revoke this key? Anything using it will stop working.')) return;
+        run(async () => { await adminApi(`/api-keys/${b.dataset.revokeKey}`, { method: 'DELETE' }); renderGrownups(); });
+      }));
+      $('#adult-form')?.addEventListener('submit', (e) => {
+        e.preventDefault();
+        const f = e.target;
+        run(async () => {
+          await adminApi('/adults', { method: 'POST', body: { email: f.elements.email.value, name: f.elements.name.value || null, household_id: f.elements.household_id.value } });
+          renderGrownups();
+        });
+      });
+      $('#key-form')?.addEventListener('submit', (e) => {
+        e.preventDefault();
+        run(async () => {
+          const { api_key } = await adminApi('/api-keys', { method: 'POST', body: { name: e.target.elements.name.value } });
+          await renderGrownups();
+          $('#key-out').innerHTML = `<p class="muted" style="margin-top:12px">Copy this now — it won’t be shown again:</p>
+            <div class="secret">${esc(api_key.key)}</div>`;
+        });
+      });
+    }
+
+    // ---------- boot ----------
+    (async () => {
+      try {
+        state.me = await adminApi('/me');
+        $('#who').textContent = `Signed in as ${state.me.adult.name || state.me.adult.email}`;
+        await refreshCore();
+        render();
+      } catch (err) {
+        main.innerHTML = `<div class="card"><h2>Can’t open parent mode</h2><p>${esc(err.message)}</p></div>`;
+      }
+    })();
+  </script>
+</body>
+</html>
