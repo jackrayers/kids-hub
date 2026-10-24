@@ -77,6 +77,7 @@
   <script type="module">
     import { adminApi, avatarHtml, esc, watchForUpdates } from '/shared/api.js';
     import { makeCutout } from '/shared/cutout.js';
+    import { makeLineArt } from '/shared/lineart.js';
     watchForUpdates();
 
     const $ = (sel, root = document) => root.querySelector(sel);
@@ -402,7 +403,15 @@
         generating.set(toyId, step);
         if (state.tab === 'catalog') renderCatalog(false);
         try {
-          if (step === 'cutout') {
+          if (step === 'use-photo') {
+            await adminApi(`/toys/${toyId}/use-photo`, { method: 'POST', body: {} });
+          } else if (step === 'lineart') {
+            await loadCatalog();
+            const toy = catalog.toys.find((t) => t.id === toyId);
+            const src = toy?.cutout || toy?.image;
+            if (!src) throw new Error('Needs a picture first');
+            await adminApi(`/toys/${toyId}/coloring`, { method: 'POST', body: await makeLineArt(src) });
+          } else if (step === 'cutout') {
             await loadCatalog();
             const toy = catalog.toys.find((t) => t.id === toyId);
             if (!toy?.image) throw new Error('Make the storybook picture first');
@@ -423,7 +432,9 @@
       if (state.tab === 'catalog') renderCatalog(false);
     }
 
-    const STEP_LABEL = { stylized: 'Painting…', cutout: 'Cutting out…', coloring: 'Drawing…' };
+    const STEP_LABEL = { stylized: 'Painting…', 'use-photo': 'Copying…', cutout: 'Cutting out…', coloring: 'Drawing…', lineart: 'Drawing…' };
+    // Gemini refuses some toys (well-known characters and brands): offer the product photo instead.
+    const isBlocked = (msg) => /prohibited|blocked|safety|recitation|didn’t return an image/i.test(msg || '');
     const thumb = (src, label, { busy, checker, big } = {}) => `
       <button type="button" class="thumb ${checker ? 'checker' : ''}" ${src && !busy ? `data-zoom="${esc(src)}" data-label="${esc(label)}" data-checker="${checker ? 1 : 0}"` : 'disabled'}
         aria-label="${esc(label)}" title="${esc(label)}">
@@ -445,19 +456,25 @@
         <li class="toy-row" data-id="${esc(t.id)}">
           <div class="thumbs">
             ${thumb(t.source_image, 'Photo')}
-            ${thumb(t.cutout || t.image, 'Storybook', { busy: (busy === 'stylized' || busy === 'cutout') && STEP_LABEL[busy], checker: !!t.cutout })}
-            ${thumb(t.coloring, 'Coloring', { busy: busy === 'coloring' && STEP_LABEL.coloring })}
+            ${thumb(t.cutout || t.image, 'Storybook', { busy: ['stylized', 'use-photo', 'cutout'].includes(busy) && STEP_LABEL[busy], checker: !!t.cutout })}
+            ${thumb(t.coloring, 'Coloring', { busy: (busy === 'coloring' || busy === 'lineart') && STEP_LABEL[busy] })}
           </div>
           <div class="toy-row-main">
             <div class="row" style="gap:6px">
               <input class="grow compact" data-field="title" value="${esc(t.title)}" maxlength="80" aria-label="Toy name">
               <select class="compact" data-field="category" aria-label="Category">${categoryOptions(t.category)}</select>
             </div>
-            <div class="toy-row-status">${t.gen_error ? `<span class="warn">⚠ ${esc(t.gen_error)}</span>` : cutoutStatus(t)}</div>
+            <div class="toy-row-status">${t.gen_error
+              ? (isBlocked(t.gen_error)
+                ? `<span class="warn">⚠ Gemini won’t draw this one (characters and brands are often blocked).</span>
+                   <button class="linkish" data-act="use-photo" ${busy ? 'disabled' : ''}>Use the product photo instead</button>`
+                : `<span class="warn">⚠ ${esc(t.gen_error)}</span>`)
+              : cutoutStatus(t)}</div>
             <div class="row toy-row-actions">
               <button class="btn small" data-act="redo-stylized" ${busy ? 'disabled' : ''}>${t.image ? 'Redo picture' : 'Make pictures'}</button>
               ${t.image ? `<button class="btn small" data-act="redo-cutout" ${busy ? 'disabled' : ''}>Redo cutout</button>` : ''}
               ${t.image ? `<button class="btn small" data-act="redo-coloring" ${busy ? 'disabled' : ''}>Redo coloring</button>` : ''}
+              ${t.image ? `<button class="btn small" data-act="lineart" ${busy ? 'disabled' : ''} title="Make the coloring page here instead of with Gemini">Simple coloring</button>` : ''}
               <span style="flex:1"></span>
               <button class="btn small danger" data-act="delete">Delete</button>
               <button class="btn small primary" data-act="approve" ${t.image && t.coloring && !busy ? '' : 'disabled'}>Approve</button>
@@ -606,6 +623,8 @@
         if (act === 'redo-stylized') makePictures(id);
         if (act === 'redo-cutout') makePictures(id, ['cutout']);
         if (act === 'redo-coloring') makePictures(id, ['coloring']);
+        if (act === 'use-photo') makePictures(id, ['use-photo', 'cutout', 'lineart']);
+        if (act === 'lineart') makePictures(id, ['lineart']);
         if (act === 'use-cutout') run(async () => {
           await uploadCutout(id, cutoutIssues.get(id).blob);
           await loadCatalog();

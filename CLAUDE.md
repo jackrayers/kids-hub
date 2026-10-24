@@ -21,9 +21,10 @@ cp .dev.vars.example .dev.vars        # set your email
 npm run db:migrate:local
 npm run dev                            # http://localhost:8788
 ```
-`DEV_ADMIN_EMAIL` bypasses Access on localhost only. `GEMINI_MOCK=1` makes placeholder pictures instead of calling Gemini.
+`DEV_ADMIN_EMAIL` bypasses Access on localhost only. `GEMINI_MOCK=1` makes placeholder pictures instead of calling Gemini; `GEMINI_MOCK=block` simulates Gemini refusing (copyright/safety) to test the fallback.
 
 ## Catalog notes
 - Prompts and categories live in `lib/catalog.js`; generation in `lib/gemini.js` (tries AI Studio, then Vertex express).
 - Coloring pages are generated *from the storybook picture*, so redoing the storybook means redoing the cutout and coloring too.
 - Gemini can’t output real transparency: the storybook prompt asks for flat pure white, and `public/shared/cutout.js` removes it in the browser.
+- Gemini refuses well-known characters/brands (e.g. Mickey). Don't work around the filter; the fallback is the product photo (`use-photo`) + browser cutout + `public/shared/lineart.js` coloring page.

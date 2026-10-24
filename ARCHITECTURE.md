@@ -69,6 +69,7 @@ Kids never log in; a paired device shows its household's kids. A tablet can inst
 3. **Coloring**: stylized image + "bold black outlines, no shading, white background" prompt → R2. (Derived from stylized so the two match.)
 4. **Cutout** (in parent mode’s browser, `public/shared/cutout.js`): flood-fills the white background from the edges, feathers the edge, trims, and stands the toy at the bottom of a 768px square PNG → `toys.cutout_key`. A sanity check (background not white, too little/too much removed) holds the cutout for a look instead of using it.
 5. Toy stays `draft` until an adult approves; redo the picture, cutout or coloring page from the review row.
+- **When Gemini refuses** (well-known characters and brands): *Use the product photo instead* copies the photo in as the picture, cuts it out, and draws a simple coloring page in the browser (`public/shared/lineart.js`). *Simple coloring* does just the coloring page for any toy.
 - Kids see the cutout standing on wooden shelves; toys without one sit in a white display box.
 - Model string in env `GEMINI_IMAGE_MODEL` (start with `gemini-3.1-flash-image`, Nano Banana 2). ~US$0.05/image.
 
