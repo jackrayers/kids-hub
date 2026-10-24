@@ -1072,7 +1072,9 @@
     }
 
     function renderModels(box) {
+      const noStock = !ps.filaments.some((f) => f.in_stock);
       box.innerHTML = `
+        ${noStock ? `<div class="card" style="border-color:#f0b429;background:#fff8e6"><strong>Add some filaments first.</strong> Kids pick colors from the in-stock filaments, so until there are some they can’t choose colors or spend stars. <button class="btn small" data-goto-fil>Go to Filaments</button></div>` : ''}
         <div class="card">
           <h2>Add a model</h2>
           <p class="muted" style="margin:0 0 10px">Set it up in PrusaSlicer (colors on extruders 1–5), then <strong>File → Save Project As</strong> and upload the .3mf here. Use a computer — it does the heavy lifting once so tablets don’t have to.</p>
@@ -1084,6 +1086,7 @@
           <ul class="list">${ps.models.map(modelRow).join('') || '<li class="muted">No models yet.</li>'}</ul>
         </div>`;
 
+      box.querySelector('[data-goto-fil]')?.addEventListener('click', () => { printTab = 'filaments'; renderPrintShop(false); });
       $('#model-file').addEventListener('change', async (e) => {
         const files = [...e.target.files];
         e.target.value = '';
