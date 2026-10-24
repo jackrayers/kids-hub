@@ -25,4 +25,5 @@ npm run dev                            # http://localhost:8788
 
 ## Catalog notes
 - Prompts and categories live in `lib/catalog.js`; generation in `lib/gemini.js` (tries AI Studio, then Vertex express).
-- Coloring pages are generated *from the storybook picture*, so redoing the storybook means redoing coloring too.
+- Coloring pages are generated *from the storybook picture*, so redoing the storybook means redoing the cutout and coloring too.
+- Gemini can’t output real transparency: the storybook prompt asks for flat pure white, and `public/shared/cutout.js` removes it in the browser.

@@ -32,6 +32,10 @@ export async function onRequestPost({ request, env, params }) {
   await env.DB.prepare(
     `UPDATE toys SET ${column} = ?, gen_error = NULL, updated_at = datetime('now') WHERE id = ?`,
   ).bind(newKey, toy.id).run();
-  await deleteImages(env, toy[column]);
+  // A new storybook picture makes the old cutout stale; parent mode makes a fresh one.
+  if (kind === 'stylized' && toy.cutout_key) {
+    await env.DB.prepare('UPDATE toys SET cutout_key = NULL WHERE id = ?').bind(toy.id).run();
+  }
+  await deleteImages(env, toy[column], kind === 'stylized' ? toy.cutout_key : null);
   return json({ toy: shapeToy(await getToyRow(env.DB, toy.id)) });
 }

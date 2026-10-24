@@ -47,7 +47,7 @@ Kids never log in; a paired device shows its household's kids. A tablet can inst
 - `api_keys(id, name, key_hash, scopes)`
 - `kid_apps(kid_id, app, enabled)` — per-kid app switches; missing row = app default from `lib/apps.js`
 - `ledger(id, kid_id, delta, kind 'award'|'spend'|'refund'|'adjust', reason, ref_type, ref_id, actor, created_at)` — **balance = SUM(delta)**; append-only, never edit rows
-- `toys(id, title, source_url, source_key, stylized_key, coloring_key, category, age_min, status 'draft'|'approved'|'hidden', created_by, created_at)`
+- `toys(id, title, source_url, source_key, stylized_key, cutout_key, coloring_key, category, age_min, status 'draft'|'approved'|'hidden', created_by, created_at)`
 - `wishlist(kid_id, toy_id, added_at, bought_by?, bought_at?, removed_at?, PK(kid_id, toy_id))` — bought fields are grown-up only; a bought wish the kid removes is kept with `removed_at`
 - `models(id, title, source_url, thumb_key, grams, print_minutes, slots 1–5, slot_labels JSON, base_cost, per_color_cost, cost_override, status)`
 - `filaments(id, name, material, hex, in_stock, sort)`
@@ -67,7 +67,9 @@ Kids never log in; a paired device shows its household's kids. A tablet can inst
 1. Admin pastes product URL → Function fetches page, parses `og:title` / `og:image`, stores source image in R2. Fallback: manual photo upload (some retailers block fetches).
 2. **Stylized**: source image + fixed house-style prompt → Gemini image model → R2.
 3. **Coloring**: stylized image + "bold black outlines, no shading, white background" prompt → R2. (Derived from stylized so the two match.)
-4. Toy stays `draft` until an adult approves; regenerate either image from the review screen.
+4. **Cutout** (in parent mode’s browser, `public/shared/cutout.js`): flood-fills the white background from the edges, feathers the edge, trims, and stands the toy at the bottom of a 768px square PNG → `toys.cutout_key`. A sanity check (background not white, too little/too much removed) holds the cutout for a look instead of using it.
+5. Toy stays `draft` until an adult approves; redo the picture, cutout or coloring page from the review row.
+- Kids see the cutout standing on wooden shelves; toys without one sit in a white display box.
 - Model string in env `GEMINI_IMAGE_MODEL` (start with `gemini-3.1-flash-image`, Nano Banana 2). ~US$0.05/image.
 
 ## Shopping list

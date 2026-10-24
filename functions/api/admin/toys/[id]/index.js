@@ -37,6 +37,6 @@ export async function onRequestDelete({ env, params }) {
     env.DB.prepare('DELETE FROM wishlist WHERE toy_id = ?').bind(toy.id),
     env.DB.prepare('DELETE FROM toys WHERE id = ?').bind(toy.id),
   ]);
-  await deleteImages(env, toy.source_key, toy.stylized_key, toy.coloring_key);
+  await deleteImages(env, toy.source_key, toy.stylized_key, toy.coloring_key, toy.cutout_key);
   return json({ ok: true });
 }

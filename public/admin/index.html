@@ -32,6 +32,13 @@
 
   <main class="gu" id="main"><p class="muted">Loading…</p></main>
 
+  <dialog id="zoom" class="zoom">
+    <form method="dialog">
+      <div class="zoom-frame"><img id="zoom-img" alt=""></div>
+      <div class="row" style="justify-content:space-between"><strong id="zoom-label"></strong><button class="btn">Close</button></div>
+    </form>
+  </dialog>
+
   <dialog id="kid-dialog">
     <form method="dialog" id="kid-form">
       <h2 style="margin:0" id="kid-dialog-title">Kid</h2>
@@ -69,6 +76,7 @@
 
   <script type="module">
     import { adminApi, avatarHtml, esc, watchForUpdates } from '/shared/api.js';
+    import { makeCutout } from '/shared/cutout.js';
     watchForUpdates();
 
     const $ = (sel, root = document) => root.querySelector(sel);
@@ -359,11 +367,14 @@
     }));
 
     // ---------- catalog ----------
-    const generating = new Map(); // toyId → 'stylized' | 'coloring'
+    const generating = new Map();   // toyId → 'stylized' | 'cutout' | 'coloring'
+    const cutoutIssues = new Map(); // toyId → { reason, blob } when a cutout looked wrong
     let catalog = { toys: [], categories: [] };
+    let catalogSearch = '';
 
     const categoryOptions = (selected) => catalog.categories
       .map((c) => `<option value="${esc(c.id)}" ${c.id === selected ? 'selected' : ''}>${esc(c.icon)} ${esc(c.name)}</option>`).join('');
+    const categoryIcon = (id) => catalog.categories.find((c) => c.id === id)?.icon || '🎁';
 
     // Shrink big phone photos before upload (keeps aspect ratio).
     async function shrinkPhoto(file, max = 1280) {
@@ -380,13 +391,27 @@
       catalog = await adminApi('/toys');
     }
 
-    // Makes the storybook picture, then the coloring page from it.
-    async function makePictures(toyId, kinds = ['stylized', 'coloring']) {
-      for (const kind of kinds) {
-        generating.set(toyId, kind);
+    async function uploadCutout(toyId, blob) {
+      await adminApi(`/toys/${toyId}/cutout`, { method: 'POST', body: blob });
+      cutoutIssues.delete(toyId);
+    }
+
+    // Runs the picture steps in order. 'cutout' happens in this browser.
+    async function makePictures(toyId, steps = ['stylized', 'cutout', 'coloring']) {
+      for (const step of steps) {
+        generating.set(toyId, step);
         if (state.tab === 'catalog') renderCatalog(false);
         try {
-          await adminApi(`/toys/${toyId}/generate`, { method: 'POST', body: { kind } });
+          if (step === 'cutout') {
+            await loadCatalog();
+            const toy = catalog.toys.find((t) => t.id === toyId);
+            if (!toy?.image) throw new Error('Make the storybook picture first');
+            const result = await makeCutout(toy.image);
+            if (result.ok) await uploadCutout(toyId, result.blob);
+            else cutoutIssues.set(toyId, { reason: result.reason, blob: result.blob });
+          } else {
+            await adminApi(`/toys/${toyId}/generate`, { method: 'POST', body: { kind: step } });
+          }
         } catch (err) {
           toast(err.message, true);
           break;
@@ -398,34 +423,61 @@
       if (state.tab === 'catalog') renderCatalog(false);
     }
 
-    const pic = (src, label, busy) => `
-      <figure class="toy-pic">
-        ${busy ? '<div class="toy-pic-busy">Painting…</div>' : src ? `<img src="${esc(src)}" alt="${esc(label)}" loading="lazy">` : '<div class="toy-pic-empty">—</div>'}
-        <figcaption>${esc(label)}</figcaption>
-      </figure>`;
+    const STEP_LABEL = { stylized: 'Painting…', cutout: 'Cutting out…', coloring: 'Drawing…' };
+    const thumb = (src, label, { busy, checker, big } = {}) => `
+      <button type="button" class="thumb ${checker ? 'checker' : ''}" ${src && !busy ? `data-zoom="${esc(src)}" data-label="${esc(label)}" data-checker="${checker ? 1 : 0}"` : 'disabled'}
+        aria-label="${esc(label)}" title="${esc(label)}">
+        ${busy ? `<span class="thumb-busy">${esc(busy)}</span>` : src ? `<img src="${esc(src)}" alt="" loading="lazy">` : '<span class="thumb-empty">—</span>'}
+      </button>`;
 
-    function draftCard(t) {
+    function cutoutStatus(t) {
+      const issue = cutoutIssues.get(t.id);
+      if (issue) return `<span class="warn">⚠ Cutout: ${esc(issue.reason)}</span>
+        <button class="linkish" data-act="use-cutout">Use anyway</button>`;
+      if (t.cutout) return '<span class="okay">✓ Cutout</span>';
+      if (t.image) return '<span class="muted">No cutout yet</span>';
+      return '';
+    }
+
+    function draftRow(t) {
       const busy = generating.get(t.id);
       return `
-        <li class="toy-draft" data-id="${esc(t.id)}">
-          <div class="toy-pics">
-            ${pic(t.source_image, 'Photo')}
-            ${pic(t.image, 'Storybook', busy === 'stylized')}
-            ${pic(t.coloring, 'Coloring', busy === 'coloring')}
+        <li class="toy-row" data-id="${esc(t.id)}">
+          <div class="thumbs">
+            ${thumb(t.source_image, 'Photo')}
+            ${thumb(t.cutout || t.image, 'Storybook', { busy: (busy === 'stylized' || busy === 'cutout') && STEP_LABEL[busy], checker: !!t.cutout })}
+            ${thumb(t.coloring, 'Coloring', { busy: busy === 'coloring' && STEP_LABEL.coloring })}
           </div>
-          <div class="row">
-            <input class="grow" data-field="title" value="${esc(t.title)}" maxlength="80" aria-label="Toy name">
-            <select data-field="category" aria-label="Category">${categoryOptions(t.category)}</select>
+          <div class="toy-row-main">
+            <div class="row" style="gap:6px">
+              <input class="grow compact" data-field="title" value="${esc(t.title)}" maxlength="80" aria-label="Toy name">
+              <select class="compact" data-field="category" aria-label="Category">${categoryOptions(t.category)}</select>
+            </div>
+            <div class="toy-row-status">${t.gen_error ? `<span class="warn">⚠ ${esc(t.gen_error)}</span>` : cutoutStatus(t)}</div>
+            <div class="row toy-row-actions">
+              <button class="btn small" data-act="redo-stylized" ${busy ? 'disabled' : ''}>${t.image ? 'Redo picture' : 'Make pictures'}</button>
+              ${t.image ? `<button class="btn small" data-act="redo-cutout" ${busy ? 'disabled' : ''}>Redo cutout</button>` : ''}
+              ${t.image ? `<button class="btn small" data-act="redo-coloring" ${busy ? 'disabled' : ''}>Redo coloring</button>` : ''}
+              <span style="flex:1"></span>
+              <button class="btn small danger" data-act="delete">Delete</button>
+              <button class="btn small primary" data-act="approve" ${t.image && t.coloring && !busy ? '' : 'disabled'}>Approve</button>
+            </div>
           </div>
-          ${t.gen_error ? `<p class="muted" style="color:var(--red-deep);margin:0">Last try failed: ${esc(t.gen_error)}</p>` : ''}
-          <div class="row">
-            <button class="btn small" data-act="redo-stylized" ${busy ? 'disabled' : ''}>${t.image ? 'Redo storybook' : 'Make pictures'}</button>
-            ${t.image ? `<button class="btn small" data-act="redo-coloring" ${busy ? 'disabled' : ''}>Redo coloring</button>` : ''}
-            <span style="flex:1"></span>
-            <button class="btn small danger" data-act="delete">Delete</button>
-            <button class="btn small primary" data-act="approve" ${t.image && t.coloring && !busy ? '' : 'disabled'}>Approve</button>
+        </li>`;
+    }
+
+    function liveRow(t) {
+      const busy = generating.get(t.id);
+      return `
+        <li class="toy-line" data-id="${esc(t.id)}">
+          ${thumb(t.cutout || t.image, t.title, { busy: busy && STEP_LABEL[busy], checker: !!t.cutout })}
+          <div class="main">
+            <div class="toy-line-title">${esc(t.title)}</div>
+            <div class="meta">${esc(categoryIcon(t.category))} ${t.cutout ? '' : '· no cutout'}${cutoutIssues.has(t.id) ? ' · ⚠ cutout needs a look' : ''}</div>
           </div>
-          ${t.source_url ? `<a class="muted" href="${esc(t.source_url)}" target="_blank" rel="noopener" style="font-size:0.8rem">Product page ↗</a>` : ''}
+          ${!t.cutout && !busy ? '<button class="btn small" data-act="redo-cutout">Cut out</button>' : ''}
+          <button class="btn small" data-act="to-draft">Edit</button>
+          <button class="btn small" data-act="hide">Hide</button>
         </li>`;
     }
 
@@ -434,87 +486,95 @@
         main.innerHTML = '<p class="muted">Loading…</p>';
         try { await loadCatalog(); } catch (err) { main.innerHTML = `<p>${esc(err.message)}</p>`; return; }
       }
+      const q = catalogSearch.trim().toLowerCase();
       const drafts = catalog.toys.filter((t) => t.status === 'draft');
       const live = catalog.toys.filter((t) => t.status === 'approved');
+      const liveShown = live.filter((t) => !q || t.title.toLowerCase().includes(q));
       const hidden = catalog.toys.filter((t) => t.status === 'hidden');
+      const missingCutouts = live.filter((t) => !t.cutout && !generating.has(t.id));
+      const searchHadFocus = document.activeElement?.id === 'toy-search';
 
       main.innerHTML = `
         <div class="card">
           <h2>Add a toy</h2>
-          <form id="toy-link" style="display:grid;gap:10px">
-            <input type="url" name="url" placeholder="Paste a product link (Target, LEGO, Melissa &amp; Doug…)" required>
-            <div class="row">
-              <input class="grow" name="title" placeholder="Name (optional, taken from the page)" maxlength="80">
-              <select name="category">${categoryOptions('other')}</select>
-              <button class="btn primary">Add from link</button>
-            </div>
+          <form id="toy-link" class="row">
+            <input class="grow" type="url" name="url" placeholder="Paste a product link" required>
+            <select name="category" aria-label="Category">${categoryOptions('other')}</select>
+            <button class="btn primary">Add</button>
           </form>
-          <p class="muted" style="margin:14px 0 8px">Shop blocked the link? Upload a photo of the toy instead:</p>
-          <form id="toy-photo" class="row">
-            <input class="grow" name="title" placeholder="Toy name" maxlength="80" required>
-            <select name="category">${categoryOptions('other')}</select>
-            <label class="btn">Choose photo<input type="file" name="photo" accept="image/*" hidden></label>
-          </form>
+          <details style="margin-top:10px">
+            <summary class="muted">Shop blocked the link? Add with a photo instead</summary>
+            <form id="toy-photo" class="row" style="margin-top:8px">
+              <input class="grow" name="title" placeholder="Toy name" maxlength="80" required>
+              <select name="category" aria-label="Category">${categoryOptions('other')}</select>
+              <label class="btn">Choose photo<input type="file" name="photo" accept="image/*" hidden></label>
+            </form>
+          </details>
         </div>
 
-        <div class="card">
-          <h2>Waiting for review ${drafts.length ? `<span class="pill">${drafts.length}</span>` : ''}</h2>
-          ${drafts.length ? `<ul class="list toy-list">${drafts.map(draftCard).join('')}</ul>`
-            : '<p class="muted" style="margin:0">Nothing waiting. New toys land here while their pictures are made.</p>'}
-        </div>
+        ${drafts.length ? `
+          <div class="card">
+            <h2>Needs a look <span class="pill">${drafts.length}</span></h2>
+            <ul class="list">${drafts.map(draftRow).join('')}</ul>
+          </div>` : ''}
 
         <div class="card">
-          <h2>In the catalog ${live.length ? `<span class="pill">${live.length}</span>` : ''}</h2>
-          ${live.length ? `<div class="toy-grid">${live.map((t) => `
-            <div class="toy-tile" data-id="${esc(t.id)}">
-              <img src="${esc(t.image)}" alt="" loading="lazy">
-              <div class="toy-tile-name">${esc(t.title)}</div>
-              <div class="row" style="gap:6px">
-                <button class="btn small" data-act="to-draft">Edit</button>
-                <button class="btn small" data-act="hide">Hide</button>
-              </div>
-            </div>`).join('')}</div>` : '<p class="muted" style="margin:0">Approved toys show up for the kids here.</p>'}
+          <div class="row" style="justify-content:space-between;margin-bottom:8px">
+            <h2 style="margin:0">In the catalog <span class="pill">${live.length}</span></h2>
+            ${missingCutouts.length ? `<button class="btn small" id="cut-all">Cut out ${missingCutouts.length} toy${missingCutouts.length > 1 ? 's' : ''}</button>` : ''}
+          </div>
+          ${live.length > 6 ? `<input id="toy-search" class="compact" type="search" placeholder="Search toys" value="${esc(catalogSearch)}" style="width:100%;margin-bottom:6px">` : ''}
+          ${live.length ? `<ul class="list">${liveShown.map(liveRow).join('') || '<li class="muted">No matches.</li>'}</ul>`
+            : '<p class="muted" style="margin:0">Approved toys show up for the kids here.</p>'}
           ${hidden.length ? `
-            <details style="margin-top:12px"><summary class="muted">Hidden (${hidden.length})</summary>
+            <details style="margin-top:10px"><summary class="muted">Hidden (${hidden.length})</summary>
               <ul class="list">${hidden.map((t) => `
-                <li data-id="${esc(t.id)}"><div class="main">${esc(t.title)}</div>
-                  <button class="btn small" data-act="show">Show again</button>
+                <li class="toy-line" data-id="${esc(t.id)}">${thumb(t.cutout || t.image, t.title, { checker: !!t.cutout })}
+                  <div class="main toy-line-title">${esc(t.title)}</div>
+                  <button class="btn small" data-act="show">Show</button>
                   <button class="btn small danger" data-act="delete">Delete</button></li>`).join('')}
               </ul>
             </details>` : ''}
         </div>`;
+
+      const search = $('#toy-search');
+      if (search) {
+        if (searchHadFocus) { search.focus(); search.setSelectionRange(search.value.length, search.value.length); }
+        search.addEventListener('input', () => { catalogSearch = search.value; renderCatalog(false); });
+      }
 
       $('#toy-link').addEventListener('submit', (e) => {
         e.preventDefault();
         const f = e.target.elements;
         const btn = e.target.querySelector('button');
         btn.disabled = true;
-        btn.textContent = 'Reading page…';
+        btn.textContent = 'Reading…';
         run(async () => {
           try {
-            const { toy } = await adminApi('/toys/import', { method: 'POST', body: {
-              url: f.url.value, title: f.title.value || null, category: f.category.value } });
+            const { toy } = await adminApi('/toys/import', { method: 'POST', body: { url: f.url.value, category: f.category.value } });
             await loadCatalog();
             makePictures(toy.id);
-          } finally { btn.disabled = false; btn.textContent = 'Add from link'; }
+          } finally { btn.disabled = false; btn.textContent = 'Add'; }
         });
       });
 
       $('#toy-photo').elements.photo.addEventListener('change', (e) => {
-        const form = $('#toy-photo');
-        const f = form.elements;
+        const f = $('#toy-photo').elements;
         const file = e.target.files[0];
         e.target.value = '';
         if (!file) return;
         if (!f.title.value.trim()) { toast('Type the toy’s name first', true); return; }
         run(async () => {
           const blob = await shrinkPhoto(file);
-          const q = new URLSearchParams({ title: f.title.value.trim(), category: f.category.value });
-          const { toy } = await adminApi(`/toys?${q}`, { method: 'POST', body: blob });
-          f.title.value = '';
+          const q2 = new URLSearchParams({ title: f.title.value.trim(), category: f.category.value });
+          const { toy } = await adminApi(`/toys?${q2}`, { method: 'POST', body: blob });
           await loadCatalog();
           makePictures(toy.id);
         });
+      });
+
+      $('#cut-all')?.addEventListener('click', async () => {
+        for (const t of missingCutouts) await makePictures(t.id, ['cutout']);
       });
 
       const toyOf = (el) => el.closest('[data-id]').dataset.id;
@@ -524,7 +584,7 @@
         renderCatalog(false);
       });
 
-      main.querySelectorAll('.toy-draft [data-field]').forEach((el) => el.addEventListener('change', () => {
+      main.querySelectorAll('[data-field]').forEach((el) => el.addEventListener('change', () => {
         const id = toyOf(el);
         run(async () => {
           await adminApi(`/toys/${id}`, { method: 'PATCH', body: { [el.dataset.field]: el.value } });
@@ -533,14 +593,24 @@
         });
       }));
 
+      main.querySelectorAll('[data-zoom]').forEach((b) => b.addEventListener('click', () => {
+        $('#zoom-img').src = b.dataset.zoom;
+        $('#zoom-img').parentElement.classList.toggle('checker', b.dataset.checker === '1');
+        $('#zoom-label').textContent = b.dataset.label;
+        $('#zoom').showModal();
+      }));
+
       main.querySelectorAll('[data-act]').forEach((b) => b.addEventListener('click', () => {
         const id = toyOf(b);
         const act = b.dataset.act;
-        if (act === 'redo-stylized') {
-          const t = catalog.toys.find((x) => x.id === id);
-          makePictures(id, t.image ? ['stylized'] : ['stylized', 'coloring']);
-        }
+        if (act === 'redo-stylized') makePictures(id);
+        if (act === 'redo-cutout') makePictures(id, ['cutout']);
         if (act === 'redo-coloring') makePictures(id, ['coloring']);
+        if (act === 'use-cutout') run(async () => {
+          await uploadCutout(id, cutoutIssues.get(id).blob);
+          await loadCatalog();
+          renderCatalog(false);
+        });
         if (act === 'approve') patch(id, { status: 'approved' });
         if (act === 'hide') patch(id, { status: 'hidden' });
         if (act === 'show') patch(id, { status: 'approved' });
