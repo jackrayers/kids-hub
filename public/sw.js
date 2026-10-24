@@ -22,7 +22,8 @@ self.addEventListener('fetch', (event) => {
 
   // Network first, cache fallback.
   event.respondWith(
-    fetch(event.request, { cache: 'no-cache' })
+    // Page loads can't take extra fetch options; other files always revalidate with the server.
+    (event.request.mode === 'navigate' ? fetch(event.request) : fetch(event.request.url, { cache: 'no-cache', credentials: 'same-origin' }))
       .then((res) => {
         if (res.ok && !url.pathname.startsWith('/img/')) {
           const copy = res.clone();
