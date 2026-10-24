@@ -471,3 +471,10 @@ input.compact, select.compact { padding: 6px 9px; font-size: 0.9rem; }
 .slot-ed input[type='color'] { width: 30px; height: 30px; padding: 0; border: 0; }
 .slot-ed input.compact { width: 100px; }
 .chip.off { opacity: 0.6; }
+
+/* Filament finishes */
+.fil-form { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+.fil-form .grow { flex: 1 1 180px; min-width: 0; }
+.fil-two { display: inline-flex; align-items: center; gap: 6px; font-size: 0.85rem; color: var(--ink-soft); }
+.fil-two[hidden] { display: none; }
+.fil-sw { flex: none; display: inline-block; width: 30px; height: 30px; border-radius: 50%; border: 2px solid #fff; box-shadow: 0 0 0 1px rgba(0,0,0,0.18); }

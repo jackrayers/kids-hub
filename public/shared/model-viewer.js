@@ -4,20 +4,72 @@
 const VS = `
 attribute vec3 aPos; attribute vec3 aNormal;
 uniform mat4 uMVP; uniform mat3 uNormal;
-varying vec3 vN; varying vec3 vPos;
-void main() { vN = normalize(uNormal * aNormal); vPos = aPos; gl_Position = uMVP * vec4(aPos, 1.0); }`;
+varying vec3 vN; varying vec3 vPos; varying vec3 vON;
+void main() { vN = normalize(uNormal * aNormal); vON = aNormal; vPos = aPos; gl_Position = uMVP * vec4(aPos, 1.0); }`;
+
+// Finishes are drawn procedurally in model space (millimetres), so a marble vein or sparkle
+// fleck is roughly real size and sticks to the model as it spins. Codes match finishes.js.
 const FS = `
+#ifdef GL_FRAGMENT_PRECISION_HIGH
+precision highp float;
+#else
 precision mediump float;
-uniform vec3 uColor; varying vec3 vN;
+#endif
+uniform vec3 uColor; uniform vec3 uColor2; uniform float uFinish;
+varying vec3 vN; varying vec3 vPos; varying vec3 vON;
+
+float hash(vec3 p) { p = fract(p * 0.3183099 + 0.1); p *= 17.0; return fract(p.x * p.y * p.z * (p.x + p.y + p.z)); }
+float noise(vec3 x) {
+  vec3 i = floor(x); vec3 f = fract(x); f = f * f * (3.0 - 2.0 * f);
+  return mix(mix(mix(hash(i), hash(i + vec3(1,0,0)), f.x), mix(hash(i + vec3(0,1,0)), hash(i + vec3(1,1,0)), f.x), f.y),
+             mix(mix(hash(i + vec3(0,0,1)), hash(i + vec3(1,0,1)), f.x), mix(hash(i + vec3(0,1,1)), hash(i + vec3(1,1,1)), f.x), f.y), f.z);
+}
+float fbm(vec3 p) { float v = 0.0; float a = 0.5; for (int k = 0; k < 4; k++) { v += a * noise(p); p *= 2.03; a *= 0.5; } return v; }
+vec3 hsv(float h, float s, float v) { vec3 k = clamp(abs(mod(h * 6.0 + vec3(0, 4, 2), 6.0) - 3.0) - 1.0, 0.0, 1.0); return v * mix(vec3(1.0), k, s); }
+
 void main() {
   vec3 n = normalize(vN);
+  vec3 p = vPos;
+  vec3 base = uColor;
+  float ks = 0.18; float shin = 28.0; float glow = 0.0; float fleck = 0.0;
+  if (uFinish < 0.5) {
+  } else if (uFinish < 1.5) {               // matte
+    ks = 0.03; shin = 8.0;
+  } else if (uFinish < 2.5) {               // silk (dual silk if a 2nd color)
+    ks = 0.55; shin = 60.0;
+    base = mix(uColor, uColor2, smoothstep(-0.45, 0.45, n.x + 0.3 * n.y));
+  } else if (uFinish < 3.5) {               // marble
+    float t = sin(p.x * 0.32 + p.y * 0.21 + p.z * 0.12 + fbm(p * 0.11) * 7.0);
+    float vein = 1.0 - smoothstep(0.0, 0.16, abs(t));
+    float fine = 1.0 - smoothstep(0.0, 0.06, abs(sin(p.y * 0.6 - p.z * 0.4 + fbm(p * 0.25 + 7.0) * 9.0)));
+    base = mix(uColor, uColor2, clamp(vein * 0.9 + fine * 0.35, 0.0, 1.0));
+    ks = 0.25; shin = 40.0;
+  } else if (uFinish < 4.5) {               // sparkle / galaxy
+    vec3 cell = floor(p * 1.7);
+    float h = hash(cell + 3.1);
+    vec3 local = fract(p * 1.7) - 0.5;
+    fleck = step(0.86, h) * (1.0 - smoothstep(0.18, 0.34, length(local)));
+    base = mix(uColor * (0.9 + 0.2 * noise(p * 0.4)), uColor2, fleck);
+  } else if (uFinish < 5.5) {               // rainbow, changing with layer height
+    base = hsv(fract(p.y * 0.022 + 0.08 * fbm(p * 0.08)), 0.72, 0.95);
+    ks = 0.3; shin = 40.0;
+  } else if (uFinish < 6.5) {               // wood
+    float r = length(p.xz + vec2(31.0, 17.0)) * 0.55 + fbm(p * vec3(0.12, 0.04, 0.12)) * 4.0;
+    float g = fract(r);
+    base = mix(uColor2, uColor, smoothstep(0.0, 0.35, g) * smoothstep(1.0, 0.65, g));
+    base *= 0.92 + 0.16 * noise(p * vec3(2.5, 0.3, 2.5));
+    ks = 0.05; shin = 10.0;
+  } else {                                  // glow in the dark
+    glow = 0.35; ks = 0.1;
+  }
   vec3 key = normalize(vec3(-0.45, 0.7, 0.55));
   vec3 fill = normalize(vec3(0.6, 0.2, 0.4));
   float d = max(dot(n, key), 0.0);
   float f = max(dot(n, fill), 0.0) * 0.25;
   float rim = pow(1.0 - max(n.z, 0.0), 2.0) * 0.18;
-  float spec = pow(max(dot(n, normalize(key + vec3(0.0, 0.0, 1.0))), 0.0), 28.0) * 0.18;
-  vec3 c = uColor * (0.42 + 0.62 * d + f) + vec3(spec + rim);
+  float spec = pow(max(dot(n, normalize(key + vec3(0.0, 0.0, 1.0))), 0.0), shin) * ks;
+  float twinkle = fleck * pow(max(dot(n, normalize(key + vec3(0.0, 0.0, 1.0))), 0.0), 3.0) * 0.9;
+  vec3 c = base * ((0.42 + 0.62 * d + f) * (1.0 - glow) + glow * 1.25) + vec3(spec + rim + twinkle);
   gl_FragColor = vec4(c, 1.0);
 }`;
 
@@ -78,10 +130,11 @@ export class ModelViewer {
     gl.attachShader(prog, sh(gl.VERTEX_SHADER, VS));
     gl.attachShader(prog, sh(gl.FRAGMENT_SHADER, FS));
     gl.linkProgram(prog);
+    if (!gl.getProgramParameter(prog, gl.LINK_STATUS)) throw new Error(`3D shader failed: ${gl.getProgramInfoLog(prog)}`);
     this.prog = prog;
     this.loc = {
       aPos: gl.getAttribLocation(prog, 'aPos'), aNormal: gl.getAttribLocation(prog, 'aNormal'),
-      uMVP: gl.getUniformLocation(prog, 'uMVP'), uNormal: gl.getUniformLocation(prog, 'uNormal'), uColor: gl.getUniformLocation(prog, 'uColor'),
+      uMVP: gl.getUniformLocation(prog, 'uMVP'), uNormal: gl.getUniformLocation(prog, 'uNormal'), uColor: gl.getUniformLocation(prog, 'uColor'), uColor2: gl.getUniformLocation(prog, 'uColor2'), uFinish: gl.getUniformLocation(prog, 'uFinish'),
     };
     this._bindPointer();
     this._loop = this._loop.bind(this);
@@ -102,7 +155,7 @@ export class ModelViewer {
     return this;
   }
 
-  /** colors: { [extruder]: '#RRGGBB' } */
+  /** colors: { [extruder]: '#RRGGBB' | { hex, hex2, code } } (code = finish, see finishes.js) */
   setColors(colors) { this.colors = { ...this.colors, ...colors }; this.render(); }
 
   resize() {
@@ -139,7 +192,11 @@ export class ModelViewer {
     const type = m.index32 ? gl.UNSIGNED_INT : gl.UNSIGNED_SHORT;
     const size = m.index32 ? 4 : 2;
     for (const g of m.groups) {
-      gl.uniform3fv(this.loc.uColor, hexToRgb(this.colors[g.extruder] || '#C8C8C8'));
+      const c = this.colors[g.extruder];
+      const hex = (typeof c === 'string' ? c : c?.hex) || '#C8C8C8';
+      gl.uniform3fv(this.loc.uColor, hexToRgb(hex));
+      gl.uniform3fv(this.loc.uColor2, hexToRgb((typeof c === 'object' && c?.hex2) || hex));
+      gl.uniform1f(this.loc.uFinish, (typeof c === 'object' && c?.code) || 0);
       gl.drawElements(gl.TRIANGLES, g.count, type, g.start * size);
     }
   }

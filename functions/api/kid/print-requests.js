@@ -23,7 +23,7 @@ export async function onRequestPost({ request, env, data, waitUntil }) {
   const colors = model.slots.map((s) => {
     const f = byId[chosen[s.extruder]];
     if (!f) throw new HttpError(400, `Pick a color for ${s.name}`);
-    return { extruder: s.extruder, slot: s.name, filament_id: f.id, name: f.name, hex: f.hex };
+    return { extruder: s.extruder, slot: s.name, filament_id: f.id, name: f.name, hex: f.hex, hex2: f.hex2 || null, finish: f.finish || 'solid' };
   });
   const { multi, cost } = priceFor(model, colors.map((c) => c.filament_id));
 

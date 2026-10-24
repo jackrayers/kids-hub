@@ -65,6 +65,9 @@
     .bench h2 { font: 800 2rem/1.05 var(--font-fun); margin: 0; }
     .slot-pick { background: var(--paper); border-radius: 22px; padding: 12px 14px; box-shadow: 0 4px 0 rgba(43, 33, 64, 0.08); }
     .slot-pick .lbl { font: 800 1.2rem/1 var(--font-fun); margin-bottom: 10px; display: flex; align-items: center; gap: 8px; }
+    .slot-pick .picked { font-weight: 700; font-size: 1rem; color: var(--ink-soft); }
+    .slot-pick .picked::before { content: '· '; }
+    .slot-pick .picked:empty { display: none; }
     .swatches { display: flex; flex-wrap: wrap; gap: 8px; }
     .swatch { width: 52px; height: 52px; border-radius: 50%; border: 4px solid #fff; box-shadow: 0 0 0 2px rgba(0, 0, 0, 0.12), 0 3px 0 rgba(0, 0, 0, 0.12); padding: 0; transition: transform 0.12s ease; }
     .swatch[aria-pressed='true'] { box-shadow: 0 0 0 4px var(--ink), 0 3px 0 rgba(0, 0, 0, 0.12); transform: scale(1.08); }
@@ -145,6 +148,7 @@
   <script type="module">
     import { kidApi, esc, session, store, watchForUpdates } from '/shared/api.js';
     import { setWordmark } from '/shared/whimsy.js';
+    import { swatchBackground, viewerColor } from '/shared/finishes.js';
     watchForUpdates();
 
     const $ = (id) => document.getElementById(id);
@@ -195,7 +199,7 @@
       $('mine-list').innerHTML = data.requests.map((r) => `
         <div class="mine-card">
           <img src="${esc(r.thumb)}" alt="">
-          <div class="sws">${r.colors.map((c) => `<i style="background:${esc(c.hex)}"></i>`).join('')}</div>
+          <div class="sws">${r.colors.map((c) => `<i style="background:${esc(swatchBackground({ hex: c.hex, hex2: c.hex2, finish: c.finish }))}"></i>`).join('')}</div>
           <div class="st">${STATUS[r.status]}</div>
         </div>`).join('');
     }
@@ -208,9 +212,9 @@
         ? '<div class="slot-pick"><div class="lbl">🎨 No colors in the shop yet</div><p style="margin:0;font:700 1.1rem/1.3 var(--font-fun)">Ask a grown-up to add some colors!</p></div>'
         : m.slots.map((s) => `
         <div class="slot-pick">
-          <div class="lbl">${esc(s.name)}</div>
+          <div class="lbl">${esc(s.name)}<span class="picked">${esc(filament(picks[s.extruder])?.name || '')}</span></div>
           <div class="swatches">${data.filaments.map((f) => `
-            <button class="swatch" type="button" style="background:${esc(f.hex)}" data-ex="${s.extruder}" data-f="${esc(f.id)}"
+            <button class="swatch" type="button" style="background:${esc(swatchBackground(f))}" data-ex="${s.extruder}" data-f="${esc(f.id)}"
               aria-pressed="${picks[s.extruder] === f.id}" aria-label="${esc(f.name)}" title="${esc(f.name)}"></button>`).join('')}
           </div>
         </div>`).join('');
@@ -220,7 +224,7 @@
       $('spend').disabled = short > 0 || noColors;
       $('surprise').disabled = noColors;
       $('spend').textContent = short > 0 ? `Need ${short} more ⭐` : `Spend ⭐ ${cost}`;
-      viewer?.setColors(Object.fromEntries(m.slots.map((s) => [s.extruder, filament(picks[s.extruder])?.hex || '#cccccc'])));
+      viewer?.setColors(Object.fromEntries(m.slots.map((s) => [s.extruder, viewerColor(filament(picks[s.extruder]))])));
     }
 
     async function openBench(m) {

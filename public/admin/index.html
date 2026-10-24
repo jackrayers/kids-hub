@@ -124,6 +124,7 @@
     import { makeCutout } from '/shared/cutout.js';
     import { makeLineArt } from '/shared/lineart.js';
     import { trimToSquare } from '/shared/trim.js';
+    import { FINISHES, finishOf, secondColor, swatchBackground } from '/shared/finishes.js';
     watchForUpdates();
 
     const $ = (sel, root = document) => root.querySelector(sel);
@@ -889,7 +890,7 @@
                 ${r.thumb ? `<img class="shop-thumb checker" src="${esc(r.thumb)}" alt="">` : '<span class="shop-thumb"></span>'}
                 <div class="main">
                   <div><strong>${esc(r.model_title)}</strong> for <strong>${esc(r.kid_name)}</strong> <span class="muted">· ${esc(r.household_name)}</span></div>
-                  <div class="req-colors">${r.colors.map((c) => `<span><i class="sw" style="background:${esc(c.hex)}"></i>${esc(c.slot)}: ${esc(c.name)} <span class="muted">(E${c.extruder})</span></span>`).join('')}</div>
+                  <div class="req-colors">${r.colors.map((c) => `<span><i class="sw" style="background:${esc(swatchBackground(c))}"></i>${esc(c.slot)}: ${esc(c.name)}${c.finish && c.finish !== 'solid' ? ` <span class="muted">${esc(finishOf(c.finish).label.toLowerCase())}</span>` : ''} <span class="muted">(E${c.extruder})</span></span>`).join('')}</div>
                   <div class="meta">⭐ ${r.cost} · ${r.multi ? 'multi-color' : 'single color'} · ${esc(when(r.created_at))} · ${STATUS_LABEL[r.status]}${r.refund_reason ? ` (${esc(r.refund_reason)})` : ''}</div>
                   <div class="row" style="gap:6px;margin-top:6px">
                     <a class="btn small" href="/api/admin/models/${esc(r.model_id)}/file">Download .3mf</a>
@@ -919,42 +920,74 @@
     }
 
     // Filaments ---------------------------------------------------------------
+    const finishOptions = (sel) => FINISHES.map((x) => `<option value="${x.id}" ${x.id === sel ? 'selected' : ''}>${esc(x.label)}</option>`).join('');
     function renderFilaments(box) {
       box.innerHTML = `
         <div class="card">
           <h2>Add a filament</h2>
-          <form id="fil-form" class="row">
+          <form id="fil-form" class="fil-form">
+            <span class="fil-sw" id="fil-preview" aria-hidden="true"></span>
             <input type="color" name="hex" value="#FFD84A" aria-label="Color">
-            <input class="grow" name="name" placeholder="Name, e.g. Pikachu Yellow" maxlength="40" required>
-            <input name="material" placeholder="PLA" maxlength="20" style="width:80px">
+            <input class="grow" name="name" placeholder="Name, e.g. White Marble" maxlength="40" required>
+            <select name="finish" aria-label="Finish">${finishOptions('solid')}</select>
+            <label class="fil-two" title=""><input type="color" name="hex2" value="#555555" aria-label="Second color"><span></span></label>
+            <input name="material" placeholder="PLA" maxlength="20" style="width:70px">
             <button class="btn primary">Add</button>
           </form>
+          <p class="muted" style="margin:8px 0 0;font-size:0.85rem">Patterns are drawn on the 3D preview so kids can see roughly what they’ll get.</p>
         </div>
         <div class="card">
           <h2>Your spools</h2>
           <p class="muted" style="margin:0 0 8px">Kids only see colors marked in stock.</p>
           <ul class="list">
-            ${ps.filaments.map((f) => `
+            ${ps.filaments.map((f) => {
+              const fin = finishOf(f.finish);
+              return `
               <li data-id="${esc(f.id)}">
+                <span class="fil-sw" style="background:${esc(swatchBackground(f))}" aria-hidden="true"></span>
                 <input type="color" value="${esc(f.hex)}" data-ff="hex" aria-label="Color of ${esc(f.name)}">
+                ${fin.second ? `<input type="color" value="${esc(secondColor(f))}" data-ff="hex2" title="${esc(fin.second)}" aria-label="${esc(fin.second)}">` : ''}
                 <div class="main"><input class="compact" value="${esc(f.name)}" data-ff="name" maxlength="40" style="width:100%"></div>
+                <select data-ff="finish" class="compact" aria-label="Finish of ${esc(f.name)}">${finishOptions(f.finish)}</select>
                 <span class="muted" style="font-size:0.8rem">${esc(f.material)}</span>
                 <button class="chip ${f.in_stock ? '' : 'off'}" data-stock aria-pressed="${f.in_stock}" style="padding:3px 10px">${f.in_stock ? 'In stock' : 'Out'}</button>
                 <button class="btn small danger" data-del aria-label="Delete ${esc(f.name)}">✕</button>
-              </li>`).join('') || '<li class="muted">No filaments yet.</li>'}
+              </li>`;
+            }).join('') || '<li class="muted">No filaments yet.</li>'}
           </ul>
         </div>`;
-      $('#fil-form').addEventListener('submit', (e) => {
+      const form = $('#fil-form');
+      const sync = () => {
+        const el = form.elements; const fin = finishOf(el.finish.value);
+        const two = form.querySelector('.fil-two');
+        two.hidden = !fin.second;
+        two.title = fin.second || '';
+        two.querySelector('span').textContent = fin.second ? fin.second.replace(/ \(optional\)/, '') : '';
+        $('#fil-preview').style.background = swatchBackground({ hex: el.hex.value, hex2: fin.second ? el.hex2.value : null, finish: el.finish.value });
+      };
+      form.elements.finish.addEventListener('change', () => {
+        // Start the second color somewhere sensible for the chosen finish.
+        const el = form.elements;
+        if (finishOf(el.finish.value).second) el.hex2.value = el.finish.value === 'silk' ? el.hex.value : secondColor({ hex: el.hex.value, finish: el.finish.value });
+        sync();
+      });
+      form.addEventListener('input', sync);
+      sync();
+      form.addEventListener('submit', (e) => {
         e.preventDefault();
         const f = e.target.elements;
+        const fin = finishOf(f.finish.value);
+        const hex2 = fin.second && !(fin.id === 'silk' && f.hex2.value.toLowerCase() === f.hex.value.toLowerCase()) ? f.hex2.value : null;
         run(async () => {
-          await adminApi('/filaments', { method: 'POST', body: { name: f.name.value, hex: f.hex.value, material: f.material.value || 'PLA' } });
+          await adminApi('/filaments', { method: 'POST', body: { name: f.name.value, hex: f.hex.value, finish: f.finish.value, hex2, material: f.material.value || 'PLA' } });
           await loadPrintShop(); renderPrintShop(false);
         });
       });
       box.querySelectorAll('[data-ff]').forEach((el) => el.addEventListener('change', () => run(async () => {
         await adminApi(`/filaments/${el.closest('[data-id]').dataset.id}`, { method: 'PATCH', body: { [el.dataset.ff]: el.value } });
-        await loadPrintShop(); toast('Saved');
+        await loadPrintShop();
+        if (el.dataset.ff === 'finish' || el.dataset.ff.startsWith('hex')) renderPrintShop(false);
+        toast('Saved');
       })));
       box.querySelectorAll('[data-stock]').forEach((b) => b.addEventListener('click', () => run(async () => {
         await adminApi(`/filaments/${b.closest('[data-id]').dataset.id}`, { method: 'PATCH', body: { in_stock: b.getAttribute('aria-pressed') !== 'true' } });
