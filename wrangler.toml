@@ -5,8 +5,8 @@ compatibility_date = "2026-10-01"
 [vars]
 # Cloudflare Access team domain and the Access application's AUD tag.
 # Fill these in here: Pages reads plain vars from this file, not the dashboard.
-ACCESS_TEAM_DOMAIN = ""
-ACCESS_AUD = ""
+ACCESS_TEAM_DOMAIN = "rough-band-2339.cloudflareaccess.com"
+ACCESS_AUD = "b3d41705c823f8ff85fc9a9540275c293410c9f3301ba14e700b0823aa7a0d09"
 
 [[d1_databases]]
 binding = "DB"
