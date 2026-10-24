@@ -596,6 +596,7 @@
             <div class="row toy-row-actions">
               <button class="btn small" data-act="redo-stylized" ${busy ? 'disabled' : ''}>${t.image ? 'Redo picture' : 'Make pictures'}</button>
               ${t.image ? `<button class="btn small" data-act="redo-cutout" ${busy ? 'disabled' : ''}>Redo cutout</button>` : ''}
+              ${t.cutout ? `<button class="btn small" data-act="touch-up" ${busy ? 'disabled' : ''} title="Tap white patches inside the toy to make them see-through">✂️ Touch up</button>` : ''}
               ${t.image ? `<button class="btn small" data-act="redo-coloring" ${busy ? 'disabled' : ''}>Redo coloring</button>` : ''}
               ${t.image ? `<button class="btn small" data-act="lineart" ${busy ? 'disabled' : ''} title="Make the coloring page here instead of with Gemini">Simple coloring</button>` : ''}
               ${t.cutout ? `<button class="btn small" data-act="storybook" ${busy ? 'disabled' : ''} title="Paint-style filter for product photos. Redo cutout undoes it.">Storybook look</button>` : ''}
@@ -618,6 +619,7 @@
             <div style="margin-top:4px">${audienceChip(t.audience)}</div>
           </div>
           ${!t.cutout && !busy ? '<button class="btn small" data-act="redo-cutout">Cut out</button>' : ''}
+          ${t.cutout && !busy ? '<button class="btn small" data-act="touch-up" title="Tap white patches to make them see-through">✂️</button>' : ''}
           <button class="btn small" data-act="to-draft">Edit</button>
           <button class="btn small" data-act="hide">Hide</button>
         </li>`;
@@ -965,6 +967,16 @@
         if (act === 'redo-coloring') makePictures(id, ['coloring', 'trim-coloring']);
         if (act === 'use-photo') makePictures(id, ['use-photo', 'cutout', 'lineart', 'storybook']);
         if (act === 'storybook') makePictures(id, ['storybook']);
+        if (act === 'touch-up') run(async () => {
+          const t = catalog.toys.find((x) => x.id === id);
+          const { openCutoutEditor } = await import('/shared/cutout-editor.js');
+          const blob = await openCutoutEditor(t.cutout, { title: `Touch up: ${t.title}` });
+          if (!blob) return;
+          await uploadCutout(id, blob);
+          await loadCatalog();
+          renderCatalog(false);
+          toast('Cutout saved');
+        });
         if (act === 'lineart') makePictures(id, ['lineart']);
         if (act === 'use-cutout') run(async () => {
           await uploadCutout(id, cutoutIssues.get(id).blob);
