@@ -84,8 +84,17 @@
       if (window.__khBooted) return;
       const main = document.getElementById('main');
       main.innerHTML = '<div class="card"><h2>Parent mode didn’t start</h2>' +
-        '<p>Reload the page. If it keeps happening, send Claude this:</p>' +
-        '<p class="secret"></p><button class="btn primary" onclick="location.reload()">Reload</button></div>';
+        '<p>This usually means an old copy of the app is stuck. Tap Reload. If it keeps happening, send Claude this:</p>' +
+        '<p class="secret"></p><button class="btn primary" id="kh-fresh">Reload</button></div>';
+      // A plain reload can reuse old copies of scripts; clear them first.
+      document.getElementById('kh-fresh').onclick = async () => {
+        try {
+          const regs = navigator.serviceWorker ? await navigator.serviceWorker.getRegistrations() : [];
+          await Promise.all(regs.map((r) => r.update()));
+          if (window.caches) await Promise.all((await caches.keys()).map((k) => caches.delete(k)));
+        } catch (e) { /* ignore */ }
+        location.reload();
+      };
       main.querySelector('.secret').textContent = (window.__khErrors.join(' | ') || 'No error reported') + ' — ' + navigator.userAgent;
     }, 8000);
   </script>

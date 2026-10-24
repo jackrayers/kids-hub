@@ -89,6 +89,12 @@ export function registerServiceWorker() {
   if ('serviceWorker' in navigator) navigator.serviceWorker.register('/sw.js').catch(() => {});
 }
 
+/** Drops the offline copies and reloads, so every file comes fresh from the server. */
+export async function freshReload() {
+  try { await Promise.all((await caches.keys()).map((k) => caches.delete(k))); } catch { /* ignore */ }
+  location.reload();
+}
+
 /**
  * Reloads the page when a new version has been deployed. Home-screen apps on
  * iPad keep pages alive for days, so check on open, on wake, and every 10 minutes.
@@ -100,7 +106,7 @@ export function watchForUpdates() {
       const res = await fetch('/api/version', { cache: 'no-store' });
       const { version } = await res.json();
       if (loaded === null) loaded = version;
-      else if (version !== loaded) location.reload();
+      else if (version !== loaded) await freshReload();
     } catch { /* offline: try again later */ }
   };
   check();
