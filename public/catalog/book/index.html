@@ -65,7 +65,12 @@
     .dogear { position: absolute; right: 0; bottom: 0; width: 13cqw; height: 13cqw; z-index: 4;
       background: linear-gradient(315deg, transparent 50%, rgba(0,0,0,.08) 50%, #f3e6cf 56%, #fff 75%);
       border-top-left-radius: 2cqw; box-shadow: -0.6cqw -0.6cqw 1.2cqw rgba(0,0,0,.12); }
-    .turning .dogear { display: none; }
+    .leaf.bwd .front .dogear { display: none; }
+    .leaf.bwd .back .dogear { display: block; }
+    .dogear { transform-origin: 100% 100%; }
+    .gutter { position: absolute; top: 0; bottom: 0; width: 18px; z-index: 5; pointer-events: none; opacity: var(--flat, 1); }
+    .gutter.at-left { left: 0; background: linear-gradient(90deg, rgba(0,0,0,.22), rgba(0,0,0,.16) 30%, transparent); }
+    .gutter.at-right { right: 0; background: linear-gradient(270deg, rgba(0,0,0,.22), rgba(0,0,0,.16) 30%, transparent); }
 
     /* ---------- pages ---------- */
     .page { position: absolute; inset: 0; overflow: hidden; container-type: size; background: #fffaf0; color: var(--ink); }
@@ -78,7 +83,7 @@
     .page .num { position: absolute; bottom: 2.2cqw; width: 6cqw; height: 6cqw; display: grid; place-items: center; border-radius: 50%; background: rgba(255,255,255,.8); font: 700 3cqw/1 var(--font-fun); color: var(--ink); }
     .page.odd .num { right: 4cqw; }
     .page.even .num { left: 4cqw; }
-    .slot.l .dogear, .leaf .back .dogear { display: none; }
+    .slot.l .dogear, .leaf.fwd .back .dogear { display: none; }
     .page .wm { position: absolute; font-size: 55cqw; opacity: 0.07; right: -10cqw; bottom: -8cqw; transform: rotate(-12deg); pointer-events: none; }
 
     .banner {
@@ -455,19 +460,27 @@
       } else {
         const [cl, cr] = spread(at); const [nl, nr] = spread(at + dir);
         if (dir > 0) {
-          $('R').innerHTML = pageHtml(nr);
+          $('R').innerHTML = nr == null ? '<div class="page paper-back"></div>' : pageHtml(nr);
           front.innerHTML = pageHtml(cr); back.innerHTML = pageHtml(nl);
           leaf.style.left = 'var(--pw)'; leaf.style.transformOrigin = 'left center';
           leaf.classList.add('fwd');
           setAngle = (p) => -180 * p;
         } else {
           $('L').innerHTML = pageHtml(nl);
-          front.innerHTML = pageHtml(cl); back.innerHTML = pageHtml(nr);
+          front.innerHTML = pageHtml(cl); back.innerHTML = cr == null ? '<div class="page paper-back"></div>' : pageHtml(nr);
+          leaf.classList.add('bwd');
           // Swap faces so the page we're leaving is on top at the start.
           leaf.style.left = '0'; leaf.style.transformOrigin = 'right center';
           setAngle = (p) => 180 * p;
         }
       }
+      if (!single) {
+        // Each face carries its own half of the spine shadow (it fades while the page is in the air).
+        const gut = (face, side) => face.insertAdjacentHTML('beforeend', `<div class="gutter ${side}"></div>`);
+        if (dir > 0) { gut(front, 'at-left'); gut(back, 'at-right'); } else { gut(front, 'at-right'); gut(back, 'at-left'); }
+      }
+      // The page being uncovered curls its corner up as the turn goes.
+      const revealEar = dir > 0 ? (single ? $('S') : $('R')).querySelector('.dogear') : null;
       leaf.hidden = false;
       book.classList.add('turning');
       pinHearts(book);
@@ -483,6 +496,11 @@
           const skew = (single || dir > 0 ? -1 : 1) * arc * 2.2;
           leaf.style.transform = `translateZ(${(arc * lift).toFixed(1)}px) rotateY(${a.toFixed(2)}deg) skewY(${skew.toFixed(2)}deg)`;
           leaf.style.setProperty('--shade', (arc * 0.38).toFixed(3));
+          leaf.style.setProperty('--flat', (1 - arc).toFixed(3));
+          if (revealEar) {
+            const k = Math.min(1, Math.max(0, (t.p - 0.25) / 0.75));
+            revealEar.style.transform = `scale(${(0.05 + 0.95 * (1 - Math.pow(1 - k, 2))).toFixed(3)})`;
+          }
           leaf.style.setProperty('--gloss', `${(t.p * 140 - 20).toFixed(0)}%`);
           // Only one side of the page is ever drawn (Safari otherwise shows hearts through it).
           const frontUp = Math.abs(a) < 90;
@@ -503,7 +521,7 @@
         },
         end(done) {
           // Hand the page that's now lying flat over to its slot, exactly as drawn — no redraw.
-          const move = (slot, face) => { const pg = face.firstElementChild; if (pg) slot.replaceChildren(pg); };
+          const move = (slot, face) => { const pg = face.querySelector('.page'); if (pg) slot.replaceChildren(pg); };
           if (single) {
             if (done && dir < 0) move($('S'), front);
             if (!done && dir > 0) move($('S'), front);
@@ -512,7 +530,6 @@
           } else {
             move(done ? $('R') : $('L'), done ? back : front);
           }
-          if (done && !single && spread(at + dir)[1] == null) $('R').innerHTML = '<div class="page paper-back"></div>';
           leaf.hidden = true; leaf.style.transform = '';
           front.replaceChildren(); back.replaceChildren();
           castL.style.opacity = '0'; castR.style.opacity = '0';
