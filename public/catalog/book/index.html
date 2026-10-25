@@ -68,6 +68,10 @@
     .leaf.bwd .front .dogear { display: none; }
     .leaf.bwd .back .dogear { display: block; }
     .dogear { transform-origin: 100% 100%; }
+    /* Under the fold you see the next page, lined up as if it were really there. */
+    .dogear .hole { position: absolute; inset: 0; overflow: hidden; clip-path: polygon(100% 0, 100% 100%, 0 100%); }
+    .dogear .peek { position: absolute; inset: auto 0 0 auto; width: 100cqw; height: 100cqh; border-radius: 0 0 8px 0; }
+    .dogear .hole::after { content: ''; position: absolute; inset: 0; background: linear-gradient(315deg, transparent 62%, rgba(0,0,0,.18) 100%); }
     .gutter { position: absolute; top: 0; bottom: 0; width: 18px; z-index: 5; pointer-events: none; opacity: var(--flat, 1); }
     .gutter.at-left { left: 0; background: linear-gradient(90deg, rgba(0,0,0,.22), rgba(0,0,0,.16) 30%, transparent); }
     .gutter.at-right { right: 0; background: linear-gradient(270deg, rgba(0,0,0,.22), rgba(0,0,0,.16) 30%, transparent); }
@@ -315,6 +319,18 @@
 
     const SLEIGH = `<svg viewBox="0 0 220 90" aria-hidden="true"><g fill="#b9773f" stroke="#7a4a22" stroke-width="2"><ellipse cx="168" cy="44" rx="20" ry="11"/><circle cx="190" cy="32" r="8"/><path d="M152 52 l-4 16 M162 54 l-2 16 M176 54 l2 16 M184 50 l5 15" fill="none" stroke-linecap="round" stroke-width="4"/></g><path d="M186 24 l-4 -12 m2 6 l-7 -3 M194 24 l4 -12 m-2 6 l7 -3" stroke="#7a4a22" stroke-width="3" fill="none" stroke-linecap="round"/><circle cx="198" cy="33" r="3.5" fill="#ff4a3d"/><path d="M150 44 C130 40 110 46 96 50" stroke="#ffd84a" stroke-width="2" fill="none"/><circle cx="52" cy="26" r="15" fill="#8a5cd6"/><circle cx="64" cy="20" r="9" fill="#4f8fe8"/><circle cx="78" cy="30" r="8" fill="#ffe6cf" stroke="#d9b597" stroke-width="1.5"/><path d="M70 26 C72 10 88 6 92 20 Z" fill="#e4483f"/><circle cx="93" cy="20" r="4" fill="#fff"/><path d="M71 33 C74 44 84 44 86 33 Z" fill="#fff"/><path d="M30 36 H100 C104 36 104 60 92 62 H44 C30 62 24 48 30 36 Z" fill="#e4483f" stroke="#ffd84a" stroke-width="2.5"/><path d="M24 72 H104 C114 72 116 62 110 60" fill="none" stroke="#ffd84a" stroke-width="5" stroke-linecap="round"/><path d="M48 62 V72 M88 62 V72" stroke="#ffd84a" stroke-width="4"/></svg>`;
 
+    // The page that shows under a lifted corner: the next right-hand page in a spread,
+    // or simply the next page when showing one at a time.
+    function pageLook(i) {
+      const p = pages[i];
+      if (!p) return 'paper-back';
+      return p.kind === 'toys' ? `th${p.theme}` : p.kind;
+    }
+    function dogear(i) {
+      const under = single ? i + 1 : i + 2;
+      return `<div class="dogear" aria-hidden="true"><div class="hole"><div class="peek page ${pageLook(under)}"></div></div></div>`;
+    }
+
     function pageHtml(i) {
       if (i == null || i < 0 || i >= pages.length) return '<div class="page blank"></div>';
       const p = pages[i];
@@ -335,9 +351,8 @@
         const cats = tocCats;
         return `<div class="page contents ${side}"><div class="inner">
           <h2>What’s inside</h2>
-          <div class="dogear" aria-hidden="true"></div>
           <div class="toc">${cats.map((c) => `<button type="button" data-goto="${c.page}"><span class="e">${esc(c.icon)}</span><span>${esc(c.name)}</span><span class="dots"></span><span>${c.page - 1}</span></button>`).join('')}</div>
-        </div></div>`;
+        </div>${dogear(i)}</div>`;
       }
       if (p.kind === 'end') {
         return `<div class="page end ${side}">
@@ -368,7 +383,7 @@
         <div class="inner">
           ${p.first ? `<div class="banner"><span class="ic">${esc(p.cat.icon)}</span>${esc(p.cat.name)}</div>` : ''}
           <div class="toys-area">${items}</div>
-        </div>${num}<div class="dogear" aria-hidden="true"></div></div>`;
+        </div>${num}${dogear(i)}</div>`;
     }
 
     // ---------- views ----------
