@@ -984,7 +984,7 @@
         if (act === 'touch-up') run(async () => {
           const t = catalog.toys.find((x) => x.id === id);
           const { openCutoutEditor } = await import('/shared/cutout-editor.js');
-          const blob = await openCutoutEditor(t.cutout, { title: `Touch up: ${t.title}` });
+          const blob = await openCutoutEditor({ source: t.image, title: `Touch up: ${t.title}` });
           if (!blob) return;
           await uploadCutout(id, blob);
           await loadCatalog();
