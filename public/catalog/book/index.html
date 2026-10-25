@@ -22,16 +22,17 @@
         linear-gradient(180deg, #6b4630, #4a2f21);
     }
     .topbar {
-      position: fixed; top: 0; left: 0; right: 0; z-index: 12; display: flex; align-items: center; gap: 10px;
-      padding: max(10px, env(safe-area-inset-top)) max(14px, env(safe-area-inset-right)) 8px max(14px, env(safe-area-inset-left));
+      position: fixed; top: 0; left: 0; right: 0; z-index: 12; display: flex; align-items: center; gap: 8px;
+      padding: max(6px, env(safe-area-inset-top)) max(8px, env(safe-area-inset-right)) 4px max(8px, env(safe-area-inset-left));
     }
+    .topbar .back-btn { padding: 6px 14px 4px; font-size: 1rem; }
     .topbar .grow { flex: 1; }
     .topbar .back-btn { text-decoration: none; }
     .pill-btn {
-      border: 0; border-radius: 999px; padding: 8px 16px 5px; background: rgba(255, 248, 235, 0.95); color: var(--ink);
+      border: 0; border-radius: 999px; padding: 6px 14px 4px; background: rgba(255, 248, 235, 0.95); color: var(--ink);
       font: 700 1.1rem/1 var(--font-fun); box-shadow: 0 3px 0 rgba(0, 0, 0, 0.25); text-decoration: none; display: inline-flex; gap: 6px; align-items: center;
     }
-    .pageno { color: #f6e6cf; font: 700 1rem/1 var(--font-fun); opacity: 0.85; }
+    .pageno { color: #f6e6cf; font: 700 0.95rem/1 var(--font-fun); opacity: 0.8; }
 
     /* ---------- the book ---------- */
     .desk { position: fixed; left: 0; right: 0; top: var(--top, 64px); bottom: var(--bottom, 120px); display: grid; place-items: center; }
@@ -53,6 +54,18 @@
     .leaf .back { transform: rotateY(180deg); }
     .leaf .face::after { content: ''; position: absolute; inset: 0; pointer-events: none; background: linear-gradient(90deg, rgba(0,0,0,var(--shade, 0)), rgba(0,0,0,0) 70%); }
     .leaf .back::after { background: linear-gradient(270deg, rgba(0,0,0,var(--shade, 0)), rgba(0,0,0,0) 70%); }
+    .leaf .face::before { content: ''; position: absolute; inset: 0; z-index: 3; pointer-events: none;
+      background: linear-gradient(100deg, transparent calc(var(--gloss, 0%) - 18%), rgba(255,255,255,.28) var(--gloss, 0%), transparent calc(var(--gloss, 0%) + 18%)); }
+    .leaf .face { box-shadow: 0 0 calc(var(--shade, 0) * 80px) rgba(0,0,0,calc(var(--shade, 0) * 0.9)); border-radius: 6px; }
+    .cast { position: absolute; top: 0; height: 100%; width: var(--pw); pointer-events: none; z-index: 4; opacity: 0; }
+    .cast.l { left: 0; background: linear-gradient(270deg, rgba(0,0,0,.55), rgba(0,0,0,0) 55%); }
+    .cast.r { left: var(--pw); background: linear-gradient(90deg, rgba(0,0,0,.55), rgba(0,0,0,0) 55%); }
+    .book.single .cast.l { background: linear-gradient(90deg, rgba(0,0,0,.5), rgba(0,0,0,0) 60%); }
+    /* Corner curl: shows the page can be turned (and is a big tap target). */
+    .dogear { position: absolute; right: 0; bottom: 0; width: 13cqw; height: 13cqw; z-index: 4;
+      background: linear-gradient(315deg, transparent 50%, rgba(0,0,0,.08) 50%, #f3e6cf 56%, #fff 75%);
+      border-top-left-radius: 2cqw; box-shadow: -0.6cqw -0.6cqw 1.2cqw rgba(0,0,0,.12); }
+    .turning .dogear { display: none; }
 
     /* ---------- pages ---------- */
     .page { position: absolute; inset: 0; overflow: hidden; container-type: size; background: #fffaf0; color: var(--ink); }
@@ -65,6 +78,7 @@
     .page .num { position: absolute; bottom: 2.2cqw; width: 6cqw; height: 6cqw; display: grid; place-items: center; border-radius: 50%; background: rgba(255,255,255,.8); font: 700 3cqw/1 var(--font-fun); color: var(--ink); }
     .page.odd .num { right: 4cqw; }
     .page.even .num { left: 4cqw; }
+    .slot.l .dogear, .leaf .back .dogear { display: none; }
     .page .wm { position: absolute; font-size: 55cqw; opacity: 0.07; right: -10cqw; bottom: -8cqw; transform: rotate(-12deg); pointer-events: none; }
 
     .banner {
@@ -157,17 +171,18 @@
     .turn.prev { left: max(8px, env(safe-area-inset-left)); }
     .turn.next { right: max(8px, env(safe-area-inset-right)); }
     .turn:disabled { opacity: 0; pointer-events: none; }
-    @media (max-width: 700px) { .turn { width: 46px; height: 46px; margin-top: -23px; font-size: 1.6rem; top: auto; bottom: calc(var(--bottom, 120px) + 8px); } }
+    @media (pointer: coarse) { .turn { display: none; } }
 
     /* Wish tray + big view (same as the shelves) */
-    .tray { position: fixed; left: 0; right: 0; bottom: 0; z-index: 10; background: var(--paper); box-shadow: 0 -8px 30px rgba(0,0,0,.3); border-radius: 24px 24px 0 0;
-      padding: 10px max(14px, env(safe-area-inset-right)) calc(10px + env(safe-area-inset-bottom)) max(14px, env(safe-area-inset-left)); }
-    .tray-in { max-width: 1100px; margin: 0 auto; display: flex; align-items: center; gap: 12px; }
-    .tray-slots { display: flex; gap: 8px; flex: 1; overflow-x: auto; }
-    .tray .slotx { flex: none; width: 60px; height: 60px; border-radius: 16px; border: 3px dashed var(--line); background: var(--cream); overflow: hidden; padding: 0; }
+    .tray { position: fixed; left: 50%; transform: translateX(-50%); bottom: max(6px, env(safe-area-inset-bottom)); z-index: 10; width: max-content; max-width: calc(100vw - 12px);
+      background: rgba(255, 250, 240, 0.94); box-shadow: 0 6px 24px rgba(0,0,0,.35); border-radius: 20px; padding: 6px 6px 6px 8px; }
+    .tray-in { display: flex; align-items: center; gap: 8px; }
+    .tray-slots { display: flex; gap: 5px; overflow-x: auto; }
+    .tray .slotx { flex: none; width: 46px; height: 46px; border-radius: 12px; border: 3px dashed var(--line); background: var(--cream); overflow: hidden; padding: 0; }
     .tray .slotx img { width: 100%; height: 100%; object-fit: contain; background: #fff; }
     .tray .slotx.filled { border: 3px solid var(--gold); }
-    .letter-btn { flex: none; border: 0; border-radius: 20px; padding: 12px 18px 8px; background: var(--green); color: #fff; font: 800 1.25rem/1 var(--font-fun); box-shadow: 0 5px 0 var(--green-deep); text-decoration: none; display: inline-flex; gap: 8px; align-items: center; }
+    .letter-btn { flex: none; border: 0; border-radius: 15px; padding: 10px 14px 7px; background: var(--green); color: #fff; font: 800 1.1rem/1 var(--font-fun); box-shadow: 0 4px 0 var(--green-deep); text-decoration: none; display: inline-flex; gap: 6px; align-items: center; }
+    @media (max-width: 480px) { .tray .slotx { width: 38px; height: 38px; border-radius: 10px; } .letter-btn { padding: 9px 10px 6px; font-size: 1rem; } }
     .letter-btn[aria-disabled='true'] { opacity: .45; pointer-events: none; }
     .big { border: 0; padding: 0; width: min(560px, calc(100vw - 32px)); border-radius: 32px; overflow: hidden; }
     .big img { width: 100%; aspect-ratio: 1; object-fit: contain; background: radial-gradient(circle at 50% 60%, #fff 0, #fff3df 70%); padding: 6%; box-sizing: border-box; }
@@ -178,7 +193,7 @@
     .want { border: 0; border-radius: 20px; padding: 14px; font: 800 1.4rem/1 var(--font-fun); background: var(--red); color: #fff; box-shadow: 0 5px 0 var(--red-deep); }
     .want.on { background: var(--paper); color: var(--red-deep); box-shadow: inset 0 0 0 3px var(--red); }
     .close { border: 0; border-radius: 20px; padding: 14px; font: 700 1.3rem/1 var(--font-fun); background: var(--cream); }
-    .bubble { position: fixed; left: 50%; bottom: calc(100px + env(safe-area-inset-bottom)); transform: translateX(-50%); z-index: 20; background: var(--ink); color: #fff; padding: 12px 20px; border-radius: 18px; font: 700 1.2rem/1.2 var(--font-fun); max-width: calc(100vw - 32px); text-align: center; }
+    .bubble { position: fixed; left: 50%; bottom: calc(76px + env(safe-area-inset-bottom)); transform: translateX(-50%); z-index: 20; background: var(--ink); color: #fff; padding: 12px 20px; border-radius: 18px; font: 700 1.2rem/1.2 var(--font-fun); max-width: calc(100vw - 32px); text-align: center; }
     .loading { color: #f6e6cf; font: 700 1.4rem/1 var(--font-fun); }
     @media (prefers-reduced-motion: reduce) { .cover .open-hint, .heart.pop { animation: none; } }
   </style>
@@ -309,6 +324,7 @@
         const cats = tocCats;
         return `<div class="page contents ${side}"><div class="inner">
           <h2>What’s inside</h2>
+          <div class="dogear" aria-hidden="true"></div>
           <div class="toc">${cats.map((c) => `<button type="button" data-goto="${c.page}"><span class="e">${esc(c.icon)}</span><span>${esc(c.name)}</span><span class="dots"></span><span>${c.page - 1}</span></button>`).join('')}</div>
         </div></div>`;
       }
@@ -341,7 +357,7 @@
         <div class="inner">
           ${p.first ? `<div class="banner"><span class="ic">${esc(p.cat.icon)}</span>${esc(p.cat.name)}</div>` : ''}
           <div class="toys-area">${items}</div>
-        </div>${num}</div>`;
+        </div>${num}<div class="dogear" aria-hidden="true"></div></div>`;
     }
 
     // ---------- views ----------
@@ -355,24 +371,30 @@
     let book;
     function layout() {
       const desk = $('desk');
-      const top = Math.ceil(document.querySelector('.topbar').getBoundingClientRect().bottom) + 4;
-      const trayH = $('tray').hidden ? 0 : $('tray').offsetHeight;
+      const top = Math.ceil(document.querySelector('.topbar').getBoundingClientRect().bottom) + 2;
+      const trayH = $('tray').hidden ? 0 : $('tray').getBoundingClientRect().height;
+      const coarse = matchMedia('(pointer: coarse)').matches;
+      const side = coarse ? 6 : 84; // room for the arrows with a mouse
       document.documentElement.style.setProperty('--top', `${top}px`);
-      document.documentElement.style.setProperty('--bottom', `${trayH + 12}px`);
-      const W = innerWidth - (innerWidth > 700 ? 150 : 20);
-      const H = innerHeight - top - trayH - (innerWidth > 700 ? 24 : 70);
-      const ratio = 0.74; // page width / height
+      document.documentElement.style.setProperty('--bottom', `${Math.ceil(trayH) + 4}px`);
+      const W = innerWidth - side * 2;
+      const H = innerHeight - top - trayH - 8;
       const wasSingle = single;
-      single = W / H < ratio * 1.55; // not room for two good-sized pages
-      const pageCount = single ? 1 : 2;
+      // Two pages when each can still be a decent portrait page; otherwise one big page.
+      single = W / 2 / H < 0.56;
+      const n = single ? 1 : 2;
+      // Pages stretch a little to fill the screen (layouts are all in %), within sensible shapes.
+      const minRatio = single ? 0.5 : 0.6; // phones are tall: let the page be tall too
+      const ratio = Math.min(0.82, Math.max(minRatio, W / n / H));
       let ph = H; let pw = ph * ratio;
-      if (pw * pageCount > W) { pw = W / pageCount; ph = pw / ratio; }
+      if (pw * n > W) { pw = W / n; ph = Math.min(H, pw / minRatio); }
       document.documentElement.style.setProperty('--pw', `${Math.floor(pw)}px`);
-      document.documentElement.style.setProperty('--bw', `${Math.floor(pw * pageCount)}px`);
+      document.documentElement.style.setProperty('--bw', `${Math.floor(pw * n)}px`);
       document.documentElement.style.setProperty('--bh', `${Math.floor(ph)}px`);
       if (!book) {
         desk.innerHTML = `<div class="book" id="book"><div class="shadow"></div>
           <div class="slot l" id="L"></div><div class="slot r" id="R"></div><div class="slot s" id="S"></div>
+          <div class="cast l" id="castL"></div><div class="cast r" id="castR"></div>
           <div class="spine"></div><div class="leaf" id="leaf" hidden><div class="face front"></div><div class="face back"></div></div></div>`;
         book = $('book');
         bindBook();
@@ -399,6 +421,7 @@
         const nums = [l, r].filter((i) => i != null && pages[i]?.kind === 'toys').map((i) => i - 1);
         $('pageno').textContent = nums.length ? `Pages ${nums.join('–')}` : '';
       }
+      pinHearts(book);
       $('prev').disabled = at <= 0;
       $('next').disabled = at >= lastAt();
     }
@@ -438,19 +461,46 @@
         }
       }
       leaf.hidden = false;
+      book.classList.add('turning');
+      pinHearts(book);
+      const castL = $('castL'); const castR = $('castR');
+      const lift = Math.min(60, book.offsetHeight * 0.06);
       const t = {
         dir, p: 0,
         set(p) {
           t.p = Math.max(0, Math.min(1, p));
-          leaf.style.transform = `rotateY(${setAngle(t.p)}deg)`;
-          leaf.style.setProperty('--shade', (Math.sin(t.p * Math.PI) * 0.35).toFixed(3));
-          if (!single) book.classList.toggle('at-cover', (at === 0 && t.p < 0.5) || (at + dir === 0 && t.p >= 0.5) ? true : false);
+          const a = setAngle(t.p);
+          const arc = Math.sin(t.p * Math.PI); // 0 → 1 → 0 over the turn
+          // Lift the page off the paper and let it ripple a touch, so it feels like paper, not a door.
+          const skew = (single || dir > 0 ? -1 : 1) * arc * 2.2;
+          leaf.style.transform = `translateZ(${(arc * lift).toFixed(1)}px) rotateY(${a.toFixed(2)}deg) skewY(${skew.toFixed(2)}deg)`;
+          leaf.style.setProperty('--shade', (arc * 0.38).toFixed(3));
+          leaf.style.setProperty('--gloss', `${(t.p * 140 - 20).toFixed(0)}%`);
+          // Only one side of the page is ever drawn (Safari otherwise shows hearts through it).
+          const frontUp = Math.abs(a) < 90;
+          front.style.visibility = frontUp ? 'visible' : 'hidden';
+          back.style.visibility = frontUp ? 'hidden' : 'visible';
+          // Shadow the lifting page casts onto the pages underneath.
+          if (single) {
+            castR.style.opacity = '0';
+            castL.style.opacity = ((dir > 0 ? 1 - t.p : t.p) * 0.55).toFixed(3);
+          } else if (dir > 0) {
+            castR.style.opacity = ((1 - t.p) * 0.6).toFixed(3);
+            castL.style.opacity = (t.p > 0.5 ? (1 - t.p) * 1.1 : 0).toFixed(3);
+          } else {
+            castL.style.opacity = ((1 - t.p) * 0.6).toFixed(3);
+            castR.style.opacity = (t.p > 0.5 ? (1 - t.p) * 1.1 : 0).toFixed(3);
+          }
+          if (!single) book.classList.toggle('at-cover', (at === 0 && t.p < 0.5) || (at + dir === 0 && t.p >= 0.5));
         },
         end(done) {
           leaf.hidden = true; leaf.style.transform = '';
+          castL.style.opacity = '0'; castR.style.opacity = '0';
+          book.classList.remove('turning');
           if (done) at += dir;
           turning = null;
           show();
+          if (done) popHearts();
         },
       };
       t.set(0);
@@ -463,7 +513,7 @@
       return new Promise((res) => {
         const step = (now) => {
           const k = Math.min(1, (now - start) / dur);
-          const e = 1 - Math.pow(1 - k, 3);
+          const e = from === 0 && target === 1 && t.auto ? (k < 0.5 ? 4 * k * k * k : 1 - Math.pow(-2 * k + 2, 3) / 2) : 1 - Math.pow(1 - k, 3);
           t.set(from + (target - from) * e);
           if (k < 1) requestAnimationFrame(step); else res();
         };
@@ -476,14 +526,48 @@
       const target = at + dir;
       if (target < 0 || target > lastAt()) return;
       turning = startTurn(dir);
-      await animateTo(turning, 1, matchMedia('(prefers-reduced-motion: reduce)').matches ? 1 : 650);
+      turning.auto = true;
+      await animateTo(turning, 1, matchMedia('(prefers-reduced-motion: reduce)').matches ? 1 : 820);
       turning.end(true);
+    }
+
+    // Pin each heart (and sticker) to its picture's top corner, wherever the picture ended up.
+    function pinHearts(root) {
+      root.querySelectorAll('.item img').forEach((img) => {
+        const place = () => {
+          const pic = img.parentElement;
+          const heart = pic.querySelector('.heart'); const burst = pic.querySelector('.burst');
+          if (!img.offsetWidth) return;
+          const hw = heart.offsetWidth;
+          heart.style.left = `${Math.min(pic.clientWidth - hw, img.offsetLeft + img.offsetWidth - hw * 0.75)}px`;
+          heart.style.top = `${Math.max(0, img.offsetTop - hw * 0.25)}px`;
+          heart.style.right = 'auto';
+          if (burst) {
+            const bw = burst.offsetWidth;
+            burst.style.left = `${Math.max(0, img.offsetLeft - bw * 0.3)}px`; burst.style.right = 'auto';
+            burst.style.top = `${Math.max(0, img.offsetTop + img.offsetHeight * 0.12)}px`;
+          }
+        };
+        // Wait a frame so the picture has its final size (and again once it has loaded).
+        requestAnimationFrame(() => requestAnimationFrame(place));
+        if (!img.complete) img.addEventListener('load', () => requestAnimationFrame(place), { once: true });
+      });
+    }
+
+    // Hearts bounce in on newly shown pages so kids notice them.
+    function popHearts() {
+      if (matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+      book.querySelectorAll('.slot:not([hidden]) .heart').forEach((h, i) => {
+        h.animate([{ transform: 'scale(0.2)', opacity: 0 }, { transform: 'scale(1.18)', opacity: 1, offset: 0.6 }, { transform: 'scale(1)' }],
+          { duration: 420, delay: 80 + i * 60, easing: 'ease-out', fill: 'backwards' });
+      });
     }
 
     function jump(page) {
       at = Math.min(atForPage(page), lastAt());
       book.animate([{ opacity: 0.3 }, { opacity: 1 }], { duration: 260 });
       show();
+      popHearts();
     }
 
     let suppressClick = false;

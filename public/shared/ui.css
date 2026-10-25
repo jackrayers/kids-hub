@@ -500,3 +500,13 @@ input.compact, select.compact { padding: 6px 9px; font-size: 0.9rem; }
 .bulk-failed .bulk-st, .bulk-bad .bulk-st { grid-column: 1 / -1; white-space: normal; font-size: 0.82rem; }
 .bulk-done .bulk-st { color: var(--green-deep, #1f7a4d); }
 @media (max-width: 640px) { .bulk-rows li { grid-template-columns: 1fr; gap: 0; } }
+
+/* Help pop-up on the home screen */
+button.grownup-link { border: 0; font: 800 1.2rem/1 var(--font-ui, system-ui); cursor: pointer; }
+.help-dlg { border: 0; border-radius: 24px; padding: 22px 24px; width: min(460px, calc(100vw - 32px)); color: var(--ink); font: 1rem/1.45 var(--font-ui, system-ui); }
+.help-dlg::backdrop { background: rgba(30, 20, 40, 0.45); }
+.help-dlg h2 { margin: 0 0 8px; font: 800 1.5rem/1.1 var(--font-fun); }
+.help-dlg ul { padding-left: 18px; margin: 8px 0; display: grid; gap: 6px; }
+.help-dlg .url { margin: 4px 0; padding: 8px 12px; border-radius: 10px; background: var(--cream); font: 700 1.05rem/1.2 ui-monospace, monospace; user-select: all; -webkit-user-select: all; }
+.help-dlg .small { font-size: 0.85rem; color: var(--ink-soft); }
+.help-dlg .btn { margin-top: 8px; width: 100%; }

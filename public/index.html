@@ -101,12 +101,27 @@
   </section>
 
   <p class="empty" id="loading">Loading…</p>
-  <a class="grownup-link" href="/admin/" aria-label="Grown-ups">⚙︎</a>
+  <button class="grownup-link" id="help-btn" type="button" aria-label="Help for grown-ups">?</button>
+  <dialog class="help-dlg" id="help">
+    <h2>What is Kids Hub?</h2>
+    <p>A little set of tablet apps for our kids and cousins.</p>
+    <ul>
+      <li><strong>🎅 Santa’s Catalog</strong> — flip through toys, tap ❤️ on favourites (up to 6), then print a letter to Santa with pictures to color in.</li>
+      <li><strong>🧩 Print Shop</strong> — spend stars earned at home on 3D prints, picking the colors for each part.</li>
+    </ul>
+    <p><strong>For grown-ups:</strong> toys, stars, kids and tablets are managed in parent mode. On your phone or computer, go to</p>
+    <p class="url">kids.jackrayers.com/admin</p>
+    <p class="small">You’ll need to be on the grown-ups list to sign in.</p>
+    <button class="btn primary" id="help-close" type="button">Got it</button>
+  </dialog>
 
   <script type="module">
     import { kidApi, avatarHtml, esc, session, store, registerServiceWorker, watchForUpdates } from '/shared/api.js';
     watchForUpdates();
     import { setWordmark } from '/shared/whimsy.js';
+    document.getElementById('help-btn').addEventListener('click', () => document.getElementById('help').showModal());
+    document.getElementById('help-close').addEventListener('click', () => document.getElementById('help').close());
+    document.getElementById('help').addEventListener('click', (e) => { if (e.target.id === 'help') e.target.close(); });
 
     const $ = (id) => document.getElementById(id);
     let kids = [];
