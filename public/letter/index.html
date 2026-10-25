@@ -27,21 +27,19 @@
     .paper {
       background: #fff; color: #222; width: min(100%, 8.5in); margin: 0 auto; border-radius: 10px;
       box-shadow: 0 20px 50px rgba(0, 0, 0, 0.25);
-      aspect-ratio: 8.5 / 11; padding: 4.5% 5.5%;
-      display: flex; flex-direction: column; gap: 2.2%;
+      aspect-ratio: 8.5 / 11; padding: 11.5% 13% 10.5%;
+      display: flex; flex-direction: column; gap: 1.6%;
       font-family: var(--font-fun);
       container-type: inline-size;
       overflow: hidden;
       position: relative;
     }
-    /* Holly corners in outline so kids can colour them in. */
-    .corner { position: absolute; width: 17%; height: auto; pointer-events: none; }
-    .corner.tl { top: 1.2%; left: 1.2%; }
-    .corner.tr { top: 1.2%; right: 1.2%; transform: scaleX(-1); }
-    .corner.bl { bottom: 1.2%; left: 1.2%; transform: scaleY(-1); }
-    .corner.br { bottom: 1.2%; right: 1.2%; transform: scale(-1, -1); }
+    /* Colour-in border (holly corners + Christmas things all round), drawn by /letter/border.js. */
+    .border { position: absolute; inset: 0; pointer-events: none; }
+    .border svg { display: block; width: 100%; height: 100%; }
     .toolbar-lights { height: 46px; margin: 0 -20px 10px; }
     .dear { font: 700 9cqw/1 'Mountains of Christmas', var(--font-fun); text-align: center; margin: 0; }
+    .ask { font: 700 5.4cqw/1.1 'Mountains of Christmas', var(--font-fun); text-align: center; margin: 0 0 1cqw; }
     .line { display: flex; align-items: baseline; gap: 2cqw; font-size: 3.4cqw; font-weight: 700; }
     .line .fill { flex: 1; border-bottom: 0.35cqw dashed #999; min-height: 1.4em; }
     .trace {
@@ -54,31 +52,18 @@
     .wants.n5, .wants.n6 { grid-template-columns: repeat(3, 1fr); }
     .want { min-height: 0; padding: 0.6cqw; display: flex; flex-direction: column; align-items: center; gap: 1cqw; break-inside: avoid; }
     .want img { flex: 1; min-height: 0; width: 100%; object-fit: contain; mix-blend-mode: multiply; } /* off-white edges vanish on paper */
-    .sign { display: flex; justify-content: flex-end; align-items: baseline; gap: 2cqw; font-size: 3.6cqw; font-weight: 700; padding-right: 16%; }
-    .sign .trace { font-size: 6cqw; }
-    .deco { display: flex; justify-content: center; gap: 3cqw; font-size: 4cqw; filter: grayscale(1); opacity: 0.55; }
+    .sign { display: flex; justify-content: center; align-items: baseline; gap: 2.5cqw; font: 700 6cqw/1 'Mountains of Christmas', var(--font-fun); }
+    .sign .trace { font-size: 10cqw; }
     .dear { position: relative; z-index: 1; }
 
     @media print {
       body.letter-app { background: #fff; padding: 0; }
       .toolbar, .hint, .toolbar-lights { display: none !important; }
-      .paper { box-shadow: none; border-radius: 0; width: 7.7in; height: 10.1in; aspect-ratio: auto; padding: 0.25in 0.35in; margin: 0; }
-      .deco { opacity: 0.4; }
+      .paper { box-shadow: none; border-radius: 0; width: 7.7in; height: 10.1in; aspect-ratio: auto; margin: 0; }
     }
   </style>
 </head>
 <body class="kid letter-app">
-  <svg width="0" height="0" style="position:absolute" aria-hidden="true">
-    <defs>
-      <g id="holly" fill="#fff" stroke="#222" stroke-width="3" stroke-linejoin="round" stroke-linecap="round">
-        <g transform="translate(60 60) rotate(-160)"><path d="M0 0 Q5.0 -1.9 10 -8.3 Q16.0 -5.5 22 -15.3 Q28.0 -7.6 34 -16.8 Q40.0 -6.9 46 -12.3 Q54.0 -3.0 62 0 Q54.0 3.0 46 12.3 Q40.0 6.9 34 16.8 Q28.0 7.6 22 15.3 Q16.0 5.5 10 8.3 Q5.0 1.9 0 0 Z"/><path d="M4 0 H56" fill="none" stroke-width="2"/></g>
-        <g transform="translate(60 60) rotate(-70)"><path d="M0 0 Q5.0 -1.9 10 -8.3 Q16.0 -5.5 22 -15.3 Q28.0 -7.6 34 -16.8 Q40.0 -6.9 46 -12.3 Q54.0 -3.0 62 0 Q54.0 3.0 46 12.3 Q40.0 6.9 34 16.8 Q28.0 7.6 22 15.3 Q16.0 5.5 10 8.3 Q5.0 1.9 0 0 Z"/><path d="M4 0 H56" fill="none" stroke-width="2"/></g>
-        <circle cx="64" cy="66" r="9"/><circle cx="79" cy="70" r="8"/><circle cx="69" cy="81" r="8"/>
-        <path d="M18 102 l4 -10 l4 10 l-10 -6 h12 z" stroke-width="2.5"/>
-        <path d="M100 18 l4 -10 l4 10 l-10 -6 h12 z" stroke-width="2.5"/>
-      </g>
-    </defs>
-  </svg>
   <div class="lights toolbar-lights" aria-hidden="true"></div>
   <div class="toolbar">
     <a class="back-btn" id="back" href="/catalog/" style="text-decoration:none">↩ Catalog</a>
@@ -88,21 +73,18 @@
   <p class="hint">Grown-ups: this makes a US Letter PDF — choose <strong>Print</strong> in the share sheet and leave scale at 100%.</p>
 
   <article class="paper" id="paper" aria-label="Letter to Santa">
-    <svg class="corner tl" viewBox="-8 -8 136 136" aria-hidden="true"><use href="#holly"/></svg>
-    <svg class="corner tr" viewBox="-8 -8 136 136" aria-hidden="true"><use href="#holly"/></svg>
-    <svg class="corner bl" viewBox="-8 -8 136 136" aria-hidden="true"><use href="#holly"/></svg>
-    <svg class="corner br" viewBox="-8 -8 136 136" aria-hidden="true"><use href="#holly"/></svg>
+    <div class="border" id="border" aria-hidden="true"></div>
     <h1 class="dear">Dear Santa,</h1>
-    <div class="line"><span>My name is</span> <span class="trace" id="name"></span></div>
-    <div class="line"><span>I would love…</span></div>
+    <p class="ask">This Christmas, please can I have…</p>
     <div class="wants" id="wants"></div>
     <div class="sign"><span>Love,</span> <span class="trace" id="sign"></span></div>
-    <div class="deco" aria-hidden="true">⭐ 🎄 🦌 🍪 🥛 🎄 ⭐</div>
   </article>
 
   <script type="module">
     import { kidApi, esc, session, watchForUpdates } from '/shared/api.js';
     import { buildLetterPdf, shareOrOpenPdf } from '/letter/pdf.js';
+    import { borderSvg } from '/letter/border.js';
+    document.getElementById('border').innerHTML = borderSvg();
     watchForUpdates();
 
     const $ = (id) => document.getElementById(id);
@@ -135,7 +117,6 @@
       try {
         const data = await kidApi(`/catalog?kid=${encodeURIComponent(kidId)}`);
         const toys = data.wishlist.map((id) => data.toys.find((t) => t.id === id)).filter(Boolean);
-        $('name').textContent = data.kid.name;
         $('sign').textContent = data.kid.name;
         const wants = $('wants');
         wants.className = `wants n${Math.max(1, toys.length)}`;

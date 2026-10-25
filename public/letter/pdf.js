@@ -27,10 +27,10 @@ function loadImage(src) {
   });
 }
 
-function hollyImage() {
-  const g = document.getElementById('holly');
-  const svg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="-8 -8 136 136">${new XMLSerializer().serializeToString(g)}</svg>`;
-  return loadImage(`data:image/svg+xml;charset=utf-8,${encodeURIComponent(svg)}`);
+import { borderSvg } from './border.js';
+
+function borderImage() {
+  return loadImage(`data:image/svg+xml;charset=utf-8,${encodeURIComponent(borderSvg())}`);
 }
 
 function drawContained(ctx, img, x, y, w, h) {
@@ -73,68 +73,56 @@ export async function buildLetterPdf({ name, toys }) {
   ctx.fillStyle = '#222';
   ctx.textBaseline = 'alphabetic';
 
-  // Holly in the four corners.
-  const holly = await hollyImage();
-  const hs = 1.45 * DPI;
-  const corner = (sx, sy, x, y) => {
-    ctx.save(); ctx.translate(x, y); ctx.scale(sx, sy); ctx.drawImage(holly, 0, 0, hs, hs); ctx.restore();
-  };
-  const inset = 0.35 * DPI;
-  corner(1, 1, inset, inset);
-  corner(-1, 1, W - inset, inset);
-  corner(1, -1, inset, H - inset);
-  corner(-1, -1, W - inset, H - inset);
+  // Colour-in border all the way round (same drawing as the on-screen preview).
+  ctx.drawImage(await borderImage(), 0, 0, W, H);
 
-  // Heading.
-  ctx.font = '700 150px "Mountains of Christmas", "Baloo 2", serif';
-  ctx.textAlign = 'center';
-  ctx.fillText('Dear Santa,', W / 2, M + 1.0 * DPI);
-
-  // My name is ___
-  const left = M + 0.35 * DPI;
-  const nameY = M + 2.05 * DPI;
-  ctx.font = '700 64px "Baloo 2", sans-serif';
-  ctx.textAlign = 'left';
-  ctx.fillText('My name is', left, nameY);
-  const labelW = ctx.measureText('My name is ').width;
-  traceText(ctx, name, left + labelW + 20, nameY + 6, 150, W - left - labelW - M - 40);
-
-  ctx.font = '700 64px "Baloo 2", sans-serif';
+  // Heading and the ask, in the storybook Christmas font.
   ctx.fillStyle = '#222';
-  ctx.fillText('I would love…', left, nameY + 0.85 * DPI);
+  ctx.textAlign = 'center';
+  ctx.font = '700 160px "Mountains of Christmas", "Baloo 2", serif';
+  ctx.fillText('Dear Santa,', W / 2, 2.05 * DPI);
+  const ask = 'This Christmas, please can I have…';
+  let askSize = 98;
+  const askFont = () => `700 ${askSize}px "Mountains of Christmas", "Baloo 2", serif`;
+  ctx.font = askFont();
+  while (ctx.measureText(ask).width > W - 2.4 * DPI && askSize > 40) { askSize -= 4; ctx.font = askFont(); }
+  ctx.fillText(ask, W / 2, 2.75 * DPI);
 
-  // Coloring pictures grid.
-  const top = nameY + 1.15 * DPI;
-  const bottom = H - M - 1.35 * DPI;
-  const gx = M + 0.2 * DPI; const gw = W - 2 * gx;
+  // Coloring pictures grid, inside the border.
+  const top = 3.0 * DPI;
+  const bottom = H - 2.35 * DPI;
+  const gx = 1.25 * DPI; const gw = W - 2 * gx;
   const n = Math.max(1, toys.length);
   const cols = n === 1 ? 1 : n <= 4 ? 2 : 3;
   const rows = Math.ceil(n / cols);
-  const gap = 0.25 * DPI;
+  const gap = 0.2 * DPI;
   const cell = Math.min((gw - gap * (cols - 1)) / cols, (bottom - top - gap * (rows - 1)) / rows);
   const usedW = cols * cell + (cols - 1) * gap;
   const startX = (W - usedW) / 2;
+  const usedH = rows * cell + (rows - 1) * gap;
+  const startY = top + (bottom - top - usedH) / 2;
   const imgs = await Promise.all(toys.map((t) => loadImage(t.coloring)));
   imgs.forEach((img, i) => {
     const r = Math.floor(i / cols); const col = i % cols;
     // Centre a short last row.
     const inRow = r === rows - 1 ? n - r * cols : cols;
     const rowStart = startX + ((cols - inRow) * (cell + gap)) / 2;
-    drawContained(ctx, img, rowStart + col * (cell + gap), top + r * (cell + gap), cell, cell);
+    drawContained(ctx, img, rowStart + col * (cell + gap), startY + r * (cell + gap), cell, cell);
   });
 
-  // Love, ___
-  const signY = H - M - 0.55 * DPI;
-  ctx.font = '700 70px "Baloo 2", sans-serif';
+  // Love, NAME — big, so kids spot their own name.
+  const signY = H - 1.45 * DPI;
+  ctx.font = '700 110px "Mountains of Christmas", "Baloo 2", serif';
+  const loveW = ctx.measureText('Love, ').width;
+  ctx.font = '800 190px "Baloo 2", sans-serif';
+  const maxName = W - 2.6 * DPI - loveW;
+  const nameW = Math.min(ctx.measureText(name).width, maxName);
+  const startSign = (W - (loveW + nameW)) / 2;
   ctx.fillStyle = '#222';
-  ctx.textAlign = 'right';
-  const signRight = W - M - 1.6 * DPI;
-  ctx.font = '800 120px "Baloo 2", sans-serif';
-  const nameW = Math.min(ctx.measureText(name).width, 3.2 * DPI);
-  traceText(ctx, name, signRight, signY + 4, 120, 3.2 * DPI, 'right');
-  ctx.font = '700 70px "Baloo 2", sans-serif';
-  ctx.textAlign = 'right';
-  ctx.fillText('Love,', signRight - nameW - 30, signY);
+  ctx.textAlign = 'left';
+  ctx.font = '700 110px "Mountains of Christmas", "Baloo 2", serif';
+  ctx.fillText('Love,', startSign, signY);
+  traceText(ctx, name, startSign + loveW, signY + 6, 190, maxName);
 
   const { jsPDF } = window.jspdf;
   const pdf = new jsPDF({ orientation: 'portrait', unit: 'in', format: 'letter', compress: true });
