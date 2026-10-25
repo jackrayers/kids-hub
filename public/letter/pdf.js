@@ -57,6 +57,16 @@ function traceText(ctx, text, x, y, size, maxWidth, align = 'left') {
  */
 export async function buildLetterPdf({ name, toys }) {
   await loadScript('/vendor/jspdf-2.5.1.umd.min.js');
+  const c = await drawLetter({ name, toys });
+  const { jsPDF } = window.jspdf;
+  const pdf = new jsPDF({ orientation: 'portrait', unit: 'in', format: 'letter', compress: true });
+  pdf.addImage(c.toDataURL('image/png'), 'PNG', 0, 0, 8.5, 11, undefined, 'FAST');
+  pdf.setProperties({ title: `${name}’s letter to Santa` });
+  return pdf.output('blob');
+}
+
+/** Draws the whole letter on a 200 dpi canvas — used for the PDF and the on-screen preview, so they match. */
+export async function drawLetter({ name, toys }) {
   try {
     await Promise.all([
       document.fonts.load('700 120px "Mountains of Christmas"'),
@@ -124,11 +134,7 @@ export async function buildLetterPdf({ name, toys }) {
   ctx.fillText('Love,', startSign, signY);
   traceText(ctx, name, startSign + loveW, signY + 6, 190, maxName);
 
-  const { jsPDF } = window.jspdf;
-  const pdf = new jsPDF({ orientation: 'portrait', unit: 'in', format: 'letter', compress: true });
-  pdf.addImage(c.toDataURL('image/png'), 'PNG', 0, 0, 8.5, 11, undefined, 'FAST');
-  pdf.setProperties({ title: `${name}’s letter to Santa` });
-  return pdf.output('blob');
+  return c;
 }
 
 /** Hands the PDF to the share sheet (Print is in there), or opens it if sharing files isn't supported. */

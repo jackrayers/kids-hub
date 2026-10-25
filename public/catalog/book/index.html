@@ -143,11 +143,15 @@
       color: #fff; text-align: center;
     }
     .cover .frame { position: absolute; inset: 4cqw; border: 1.2cqw solid #f0c75a; border-radius: 3cqw; box-shadow: inset 0 0 0 .6cqw #8f1f1a, inset 0 0 0 1cqw #f0c75a; }
-    .cover .t1 { position: absolute; top: 14cqw; left: 0; right: 0; font: 700 9cqw/1 'Mountains of Christmas', var(--font-fun); color: #ffe7a0; text-shadow: 0 .6cqw 0 rgba(0,0,0,.25); }
-    .cover .t2 { position: absolute; top: 25cqw; left: 0; right: 0; font: 400 17cqw/0.95 'Chewy', var(--font-fun); text-shadow: 0 1cqw 0 rgba(0,0,0,.25); }
-    .cover .sleigh { position: absolute; left: 14cqw; right: 14cqw; top: 66cqw; }
-    .cover .for { position: absolute; bottom: 30cqw; left: 0; right: 0; font: 700 6.4cqw/1.1 var(--font-fun); color: #ffe7a0; }
-    .cover .year { position: absolute; bottom: 14cqw; left: 50%; transform: translateX(-50%); padding: 1.2cqw 5cqw .6cqw; border-radius: 999px; background: #f0c75a; color: #8f1f1a; font: 800 6cqw/1 var(--font-fun); }
+    /* Cover pieces stack top to bottom and share out the page's height, whatever its shape. */
+    .cover .stack { position: absolute; inset: 11cqw 9cqw 13cqw; display: flex; flex-direction: column; align-items: center; justify-content: space-between; }
+    .cover .t1 { font: 700 9cqw/1 'Mountains of Christmas', var(--font-fun); color: #ffe7a0; text-shadow: 0 .6cqw 0 rgba(0,0,0,.25); }
+    .cover .t2 { font: 400 17cqw/0.95 'Chewy', var(--font-fun); text-shadow: 0 1cqw 0 rgba(0,0,0,.25); }
+    .cover .sleigh { width: 74%; flex: 0 1 auto; min-height: 0; display: flex; justify-content: center; }
+    .cover .sleigh svg { width: 100%; max-height: 100%; }
+    .cover .for { font: 700 5.6cqw/1.15 var(--font-fun); color: #ffe7a0; background: rgba(120, 20, 16, 0.45); padding: 1.6cqw 6cqw 1cqw; border-radius: 3cqw; }
+    .cover .for span { font-size: 8.5cqw; color: #fff; }
+    .cover .year { padding: 1.2cqw 5cqw .6cqw; border-radius: 999px; background: #f0c75a; color: #8f1f1a; font: 800 6cqw/1 var(--font-fun); }
     .cover .flake { position: absolute; color: #fff; opacity: .55; font-size: 5cqw; }
     .cover .open-hint { position: absolute; right: 7cqw; bottom: 6cqw; font: 700 4cqw/1 var(--font-fun); color: #ffe7a0; animation: nudge 1.6s ease-in-out infinite; }
     @keyframes nudge { 50% { transform: translateX(-1.5cqw); } }
@@ -314,10 +318,12 @@
       if (p.kind === 'cover') {
         const flakes = [[10, 8], [82, 12], [16, 52], [86, 46], [8, 88], [90, 84], [50, 7]].map(([x, y]) => `<span class="flake" style="left:${x}%;top:${y}%">❄</span>`).join('');
         return `<div class="page cover">${flakes}<div class="frame"></div>
-          <div class="t1">The North Pole</div><div class="t2">Santa’s<br>Catalog</div>
-          <div class="sleigh">${SLEIGH}</div>
-          ${data.kid ? `<div class="for">Made for ${esc(data.kid.name)}</div>` : ''}
-          <div class="year">${new Date().getFullYear()}</div>
+          <div class="stack">
+            <div class="t1">The North Pole</div><div class="t2">Santa’s<br>Catalog</div>
+            <div class="sleigh">${SLEIGH}</div>
+            ${data.kid ? `<div class="for">Made for<br><span>${esc(data.kid.name)}</span></div>` : ''}
+            <div class="year">${new Date().getFullYear()}</div>
+          </div>
           <div class="open-hint">Open me ›</div></div>`;
       }
       if (p.kind === 'contents') {

@@ -94,6 +94,7 @@
       </fieldset>
       <label class="row" style="gap:8px"><input type="checkbox" name="active" checked> Show on tablets</label>
       <div class="row" style="justify-content:flex-end">
+        <button class="btn danger" type="button" id="kid-delete" style="margin-right:auto">Delete</button>
         <button class="btn" value="cancel" formnovalidate>Cancel</button>
         <button class="btn primary" value="save" id="kid-save">Save</button>
       </div>
@@ -352,9 +353,22 @@
       $('#kid-apps').innerHTML = state.apps.map((a) => `
         <label class="row" style="gap:6px"><input type="checkbox" name="app_${esc(a.id)}"
           ${(kid ? kid.apps?.[a.id] : a.default_enabled) ? 'checked' : ''}> ${esc(a.icon)} ${esc(a.name)}</label>`).join('');
+      $('#kid-delete').hidden = !kid;
       paintKidPreview();
       kidDialog.showModal();
     }
+    $('#kid-delete').addEventListener('click', () => {
+      const kid = state.editingKid;
+      if (!kid || !confirm(`Delete ${kid.name}? Their wish list and app settings go too. (If they have stars or prints, that history is kept for the records but they disappear everywhere.)`)) return;
+      run(async () => {
+        await adminApi(`/kids/${kid.id}`, { method: 'DELETE' });
+        kidDialog.close();
+        state.selectedKids.delete(kid.id);
+        await refreshCore();
+        render();
+        toast(`${kid.name} deleted`);
+      });
+    });
     ['name', 'emoji', 'color'].forEach((n) => kidForm.elements[n].addEventListener('input', paintKidPreview));
 
     kidForm.addEventListener('submit', (e) => {
@@ -996,6 +1010,27 @@
 
     // ---------- shopping ----------
     let shoppingFilter = 'todo';
+    // Every wish, newest first, across all kids.
+    function timelineHtml(kids) {
+      const rows = kids.flatMap((k) => k.items.map((i) => ({ ...i, k }))).sort((a, b) => String(b.added_at).localeCompare(String(a.added_at)));
+      if (!rows.length) return '<div class="card"><p class="muted" style="margin:0">No wishes yet.</p></div>';
+      let day = '';
+      const out = rows.map((i) => {
+        const d = new Date(String(i.added_at).replace(' ', 'T') + 'Z');
+        const label = d.toLocaleDateString(undefined, { weekday: 'short', month: 'short', day: 'numeric' });
+        const head = label !== day ? `<li class="tl-day">${esc(label)}</li>` : '';
+        day = label;
+        return `${head}<li class="${i.bought ? 'is-bought' : ''}">
+          ${avatarHtml({ name: i.k.kid_name, emoji: i.k.emoji, color: i.k.color, avatar_url: i.k.avatar_url }, 'small')}
+          ${i.image ? `<img class="shop-thumb" src="${esc(i.image)}" alt="">` : '<span class="shop-thumb"></span>'}
+          <div class="main"><div><strong>${esc(i.k.kid_name)}</strong> wished for <strong>${esc(i.title)}</strong></div>
+            <div class="meta">${esc(d.toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit' }))}${i.removed ? ' · taken off list' : ''}${i.bought ? ` · bought by ${esc(i.bought_by)}` : ''}</div></div>
+          ${i.source_url ? `<a class="btn small" href="${esc(i.source_url)}" target="_blank" rel="noopener">Buy ↗</a>` : ''}
+        </li>`;
+      }).join('');
+      return `<div class="card"><ul class="list shop-list timeline">${out}</ul></div>`;
+    }
+
     async function renderShopping() {
       main.innerHTML = '<p class="muted">Loading…</p>';
       let data;
@@ -1011,17 +1046,19 @@
             <div class="chips">
               <button class="chip" type="button" data-filter="todo" aria-pressed="${shoppingFilter === 'todo'}" style="padding:4px 12px">Still to buy</button>
               <button class="chip" type="button" data-filter="all" aria-pressed="${shoppingFilter === 'all'}" style="padding:4px 12px">Everything</button>
+              <button class="chip" type="button" data-filter="time" aria-pressed="${shoppingFilter === 'time'}" style="padding:4px 12px">By date</button>
             </div>
           </div>
           <p class="muted" style="margin:8px 0 0">${totals.wishes} wish${totals.wishes === 1 ? '' : 'es'} · ${totals.bought} bought · ${Math.max(0, left)} to go. Kids never see what’s been bought.</p>
         </div>
-        ${kids.length ? kids.map((k) => {
+        ${shoppingFilter === 'time' ? timelineHtml(kids) : kids.length ? kids.map((k) => {
           const items = k.items.filter(show);
           return `
           <div class="card">
             <div class="row shop-kid" style="margin-bottom:6px">
               ${avatarHtml({ name: k.kid_name, emoji: k.emoji, color: k.color, avatar_url: k.avatar_url })}
               <div class="main"><h2 style="margin:0">${esc(k.kid_name)}</h2><div class="muted" style="font-size:0.85rem">${esc(k.household_name)}</div></div>
+              ${k.items.some((i) => !i.removed) ? `<button class="btn small" type="button" data-clear="${esc(k.kid_id)}" data-name="${esc(k.kid_name)}" title="Empty ${esc(k.kid_name)}’s list so they can start again">Clear list</button>` : ''}
             </div>
             <ul class="list shop-list">
               ${items.length ? items.map((i) => `
@@ -1051,6 +1088,14 @@
       main.querySelectorAll('[data-filter]').forEach((b) => b.addEventListener('click', () => {
         shoppingFilter = b.dataset.filter;
         renderShopping();
+      }));
+      main.querySelectorAll('[data-clear]').forEach((b) => b.addEventListener('click', () => {
+        if (!confirm(`Clear ${b.dataset.name}’s wish list? Their hearts reset so they can pick again. Anything already bought stays in your history.`)) return;
+        run(async () => {
+          await adminApi('/shopping/clear', { method: 'POST', body: { kid_id: b.dataset.clear } });
+          toast(`${b.dataset.name}’s list is empty`);
+          renderShopping();
+        });
       }));
       main.querySelectorAll('[data-bought]').forEach((b) => b.addEventListener('click', () => {
         const li = b.closest('li');

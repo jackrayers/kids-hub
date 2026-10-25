@@ -5,7 +5,7 @@ import { json, readJson, requireString } from '../../../../lib/http.js';
 
 export async function onRequestGet({ env }) {
   const { results } = await env.DB.prepare(`SELECT h.*,
-      (SELECT COUNT(*) FROM kids k WHERE k.household_id = h.id AND k.active = 1) AS kid_count,
+      (SELECT COUNT(*) FROM kids k WHERE k.household_id = h.id AND k.active = 1 AND k.deleted_at IS NULL) AS kid_count,
       (SELECT COUNT(*) FROM devices d WHERE d.household_id = h.id AND d.revoked_at IS NULL) AS device_count
     FROM households h ORDER BY h.created_at`).all();
   return json({ households: results });

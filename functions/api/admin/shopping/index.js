@@ -14,7 +14,7 @@ export async function onRequestGet({ env }) {
     JOIN households h ON h.id = k.household_id
     JOIN toys t ON t.id = w.toy_id
     LEFT JOIN adults a ON a.email = w.bought_by
-    WHERE t.status = 'approved' OR w.bought_at IS NOT NULL
+    WHERE k.deleted_at IS NULL AND (t.status = 'approved' OR w.bought_at IS NOT NULL)
     ORDER BY h.name, k.sort, k.name, w.added_at`).all();
 
   const kids = new Map();

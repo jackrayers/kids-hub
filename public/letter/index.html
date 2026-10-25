@@ -55,6 +55,8 @@
     .sign { display: flex; justify-content: center; align-items: baseline; gap: 2.5cqw; font: 700 6cqw/1 'Mountains of Christmas', var(--font-fun); }
     .sign .trace { font-size: 10cqw; }
     .dear { position: relative; z-index: 1; }
+    .paper.is-drawn { padding: 0; display: block; }
+    .paper canvas.drawn { display: block; width: 100%; height: 100%; }
 
     @media print {
       body.letter-app { background: #fff; padding: 0; }
@@ -82,7 +84,7 @@
 
   <script type="module">
     import { kidApi, esc, session, watchForUpdates } from '/shared/api.js';
-    import { buildLetterPdf, shareOrOpenPdf } from '/letter/pdf.js';
+    import { buildLetterPdf, drawLetter, shareOrOpenPdf } from '/letter/pdf.js';
     import { borderSvg } from '/letter/border.js';
     document.getElementById('border').innerHTML = borderSvg();
     watchForUpdates();
@@ -125,6 +127,14 @@
           : '<p style="text-align:center;font-size:3cqw;color:#888">Pick some toys in the catalog first!</p>';
         document.title = `${data.kid.name}’s Letter to Santa`;
         letter = { name: data.kid.name, toys };
+        // Swap the quick HTML preview for the real drawing, so the screen matches the print exactly.
+        try {
+          const canvas = await drawLetter(letter);
+          canvas.className = 'drawn';
+          canvas.setAttribute('aria-label', `${data.kid.name}’s letter to Santa`);
+          $('paper').replaceChildren(canvas);
+          $('paper').classList.add('is-drawn');
+        } catch (err) { console.error(err); }
       } catch (err) {
         $('wants').innerHTML = `<p>${esc(err.message)}</p>`;
       }

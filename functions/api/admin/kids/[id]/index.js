@@ -1,4 +1,5 @@
 // GET   /api/admin/kids/:id
+// DELETE /api/admin/kids/:id → removes the kid (kept but hidden if they have star/print history)
 // PATCH /api/admin/kids/:id  { name?, household_id?, birth_year?, emoji?, color?, ui_mode?, active?, sort?,
 //                             apps?: { santa: bool, print: bool } }
 import { setAppStmt } from '../../../../../lib/apps.js';
@@ -33,4 +34,29 @@ export async function onRequestPatch({ request, env, params, data }) {
   }
   if (stmts.length) await env.DB.batch(stmts);
   return json({ kid: await getKid(env.DB, params.id) });
+}
+
+export async function onRequestDelete({ env, params }) {
+  const kid = await getKid(env.DB, params.id); // 404 if missing
+  const id = kid.id;
+  const history = await env.DB.prepare(`SELECT
+      (SELECT COUNT(*) FROM ledger WHERE kid_id = ?) + (SELECT COUNT(*) FROM print_requests WHERE kid_id = ?) AS n`)
+    .bind(id, id).first();
+  const cleanup = [
+    env.DB.prepare('DELETE FROM wishlist WHERE kid_id = ?').bind(id),
+    env.DB.prepare('DELETE FROM kid_apps WHERE kid_id = ?').bind(id),
+    env.DB.prepare('DELETE FROM item_audience WHERE kid_id = ?').bind(id),
+    env.DB.prepare('UPDATE devices SET kid_id = NULL WHERE kid_id = ?').bind(id),
+    env.DB.prepare('DELETE FROM pairing_codes WHERE kid_id = ?').bind(id),
+  ];
+  if (history.n) {
+    // The ledger can't be edited, so keep the row and hide it everywhere.
+    await env.DB.batch([...cleanup,
+      env.DB.prepare("UPDATE kids SET active = 0, deleted_at = datetime('now') WHERE id = ?").bind(id)]);
+    return json({ ok: true, kept_history: true });
+  }
+  const { avatar_key: avatar } = await env.DB.prepare('SELECT avatar_key FROM kids WHERE id = ?').bind(id).first();
+  await env.DB.batch([...cleanup, env.DB.prepare('DELETE FROM kids WHERE id = ?').bind(id)]);
+  if (avatar) await env.IMAGES.delete(avatar);
+  return json({ ok: true, kept_history: false });
 }

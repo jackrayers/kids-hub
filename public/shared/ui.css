@@ -510,3 +510,8 @@ button.grownup-link { border: 0; font: 800 1.2rem/1 var(--font-ui, system-ui); c
 .help-dlg .url { margin: 4px 0; padding: 8px 12px; border-radius: 10px; background: var(--cream); font: 700 1.05rem/1.2 ui-monospace, monospace; user-select: all; -webkit-user-select: all; }
 .help-dlg .small { font-size: 0.85rem; color: var(--ink-soft); }
 .help-dlg .btn { margin-top: 8px; width: 100%; }
+
+/* Shopping: by-date view */
+.timeline .tl-day { display: block; padding: 10px 0 2px; border: 0; font-weight: 800; font-size: 0.85rem; color: var(--ink-soft); text-transform: uppercase; letter-spacing: 0.04em; }
+.timeline li { align-items: center; gap: 10px; }
+.timeline .avatar.small, .timeline .avatar { width: 32px; height: 32px; font-size: 1rem; flex: none; }
