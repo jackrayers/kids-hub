@@ -16,7 +16,9 @@ Tablet web apps for the kids: **Santa’s Catalog** (browse toys, build a printa
 5. **Custom domain:** Pages → kids-hub → Custom domains → `kids.jackrayers.com`.
 6. **Cloudflare Access** (Zero Trust → Access → Applications → Self-hosted):
    - Application domain `kids.jackrayers.com`, paths `admin` and `api/admin`.
-   - Policy: *Allow* → Emails → you plus any other grown-ups. Login method: One-time PIN.
+   - Policy: *Allow* → Emails → you plus any other grown-ups.
+   - Login methods: Zero Trust → Integrations → Identity providers → add **One-time PIN** (emailed code). The app accepts all providers, so the login page offers both Cloudflare and One-time PIN.
+   - Branding: Zero Trust → Reusable components → Custom pages → Access login page (name "Kids Hub · Parent mode", logo `https://kids.jackrayers.com/icons/icon-512.png`, background `#1f6b4a`).
    - Copy the **Application Audience (AUD) tag**.
 7. **Settings:** because `wrangler.toml` is the Pages config, plain variables live there, not in the dashboard.
    - In `wrangler.toml` `[vars]`: `ACCESS_TEAM_DOMAIN` = `<your-team>.cloudflareaccess.com`, `ACCESS_AUD` = the AUD tag. Commit.
