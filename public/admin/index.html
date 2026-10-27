@@ -1401,8 +1401,11 @@
     function cleanModelTitle(t) {
       const out = t.replace(/[（(][^)）]*[)）]/g, ' ').replace(/#\s?\d+/g, ' ')
         .replace(/\b(pok[eé]mon|multi[- ]?colou?r(ed)?|multi[- ]?parts?|no ams|ams|mini figure|figure|model|\w+ generation|flexi|articulated|print[- ]in[- ]place|\d+\s?colou?rs?|\d+\s?mm( tall)?|tall|v?\d+(\.\d+)+)\b/gi, ' ')
+        .replace(/\b(mini ?figure|minifig|freestanding|standing|statue|keychain)\b/gi, ' ')
         .replace(/[|/\\_-]+/g, ' ').replace(/\s+/g, ' ').trim();
-      return (out || t).slice(0, 60);
+      // "CHARMANDER" → "Charmander" (leave mixed-case titles alone)
+      const tidy = out && out === out.toUpperCase() ? out.toLowerCase().replace(/\b\p{L}/gu, (c) => c.toUpperCase()) : out;
+      return (tidy || t).slice(0, 60);
     }
     // Friendly name for a slot from its colour ("Navy", "Yellow"…) so the print queue reads well.
     const NAMED = [['Black', '#1E1E1E'], ['White', '#F7F7F7'], ['Grey', '#9A9A9A'], ['Silver', '#C8C8C8'], ['Red', '#D8322A'], ['Dark red', '#8C1C1C'],
