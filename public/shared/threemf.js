@@ -241,6 +241,7 @@ async function parseBambu(files) {
     title: md('Title'), positions, triangles, extruders, colours, printZ, plates,
     meta: {
       source: 'bambu', plateCount: Math.max(1, plateCount), slice,
+      pieces: items.filter((it) => it.printable).length, // separate objects = parts to put together
       designer: md('Designer') || null, license: md('License') || null,
       refImage: refName ? files[refName] : null,
     },
@@ -331,7 +332,7 @@ async function parsePrusa(files) {
   return {
     title, positions, triangles: new Uint32Array(T), extruders: new Uint8Array(E), colours,
     printZ, plates: new Uint8Array(E.length).fill(1),
-    meta: { source: 'prusaslicer', plateCount: 1, slice: [], designer: null, license: null },
+    meta: { source: 'prusaslicer', plateCount: 1, slice: [], designer: null, license: null, pieces: items.filter((it) => objects[it.id]).length },
   };
 }
 
@@ -420,7 +421,7 @@ export async function buildPreview({ positions: P, triangles: T, extruders: E },
  * "Can the MMU3 print this in one go?" — a quick estimate from the model itself.
  * Slices each plate into layers and counts the filaments each layer needs: every extra
  * colour in a layer is a filament swap (slow on the MMU3, and each one purges filament).
- * Returns { colors, plates, swaps, swapHours, purgeGrams, height, support, verdict: 'good'|'ok'|'hard'|'no', notes[] }.
+ * Returns { colors, plates, pieces (separate objects — 1 = prints as one piece), swaps, swapHours, purgeGrams, height, support, verdict: 'good'|'ok'|'hard'|'no', notes[] }.
  */
 export function printCheck({ triangles: T, extruders: E, printZ: Z, plates: PL, meta = {} }, { layer = 0.2, swapSeconds = 70, purgeGramsPerSwap = 0.15 } = {}) {
   const used = new Set(E);
@@ -458,11 +459,13 @@ export function printCheck({ triangles: T, extruders: E, printZ: Z, plates: PL, 
   const worse = (v) => { const order = ['good', 'ok', 'hard', 'no']; if (order.indexOf(v) > order.indexOf(verdict)) verdict = v; };
   if (used.size > 5) { worse('no'); notes.push(`${used.size} colors — the MMU3 has 5`); }
   if (swaps > 600) { worse('hard'); notes.push('lots of color swaps — long print, lots of purge'); } else if (swaps > 150) { worse('ok'); notes.push('a fair few color swaps'); }
+  const pieces = Math.max(1, meta.pieces || 1);
+  if (pieces > 1) { worse('ok'); notes.push(`${pieces} separate pieces — put together after printing`); }
   if (plateIds.length > 1) { worse('ok'); notes.push(`${plateIds.length} plates — print each, then put it together`); }
   if (support) { worse('ok'); notes.push('designer used supports'); }
   if (height > 120) { worse('ok'); notes.push('tall — a long print'); }
   return {
-    colors: used.size, plates: plateIds.length, swaps,
+    colors: used.size, plates: plateIds.length, pieces, swaps,
     swapHours: +((swaps * swapSeconds) / 3600).toFixed(1), purgeGrams: Math.round(swaps * purgeGramsPerSwap),
     height: Math.round(height), support, verdict, notes,
     designer: meta.slice?.length ? { hours: +meta.slice.reduce((s, p) => s + (p.hours || 0), 0).toFixed(1), grams: meta.slice.reduce((s, p) => s + (p.grams || 0), 0) } : null,

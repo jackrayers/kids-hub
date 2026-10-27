@@ -1434,7 +1434,8 @@
     function checkHtml(c) {
       if (!c) return '';
       const [icon, label] = VERDICT[c.verdict] || VERDICT.ok;
-      const bits = [`${c.colors} color${c.colors === 1 ? '' : 's'}`, c.plates > 1 ? `${c.plates} plates` : '1 plate', `≈${c.swaps} swaps (≈${c.swapHours} h, ${c.purgeGrams} g purge)`];
+      const bits = [`${c.colors} color${c.colors === 1 ? '' : 's'}`, c.pieces > 1 ? `${c.pieces} pieces` : (c.pieces === 1 ? 'one piece' : null), c.plates > 1 ? `${c.plates} plates` : '1 plate', `≈${c.swaps} swaps (≈${c.swapHours} h, ${c.purgeGrams} g purge)`];
+      bits.splice(0, bits.length, ...bits.filter(Boolean));
       if (c.designer?.hours) bits.push(`designer’s Bambu slice: ${c.designer.hours} h, ${c.designer.grams} g`);
       return `<div class="check check-${esc(c.verdict)}" title="${esc(c.notes.join('; '))}"><strong>${icon} ${esc(label)}</strong> · ${esc(bits.join(' · '))}${c.notes.length ? `<div class="muted">${esc(c.notes.join(' · '))}</div>` : ''}</div>`;
     }
