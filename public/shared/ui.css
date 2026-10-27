@@ -515,3 +515,11 @@ button.grownup-link { border: 0; font: 800 1.2rem/1 var(--font-ui, system-ui); c
 .timeline .tl-day { display: block; padding: 10px 0 2px; border: 0; font-weight: 800; font-size: 0.85rem; color: var(--ink-soft); text-transform: uppercase; letter-spacing: 0.04em; }
 .timeline li { align-items: center; gap: 10px; }
 .timeline .avatar.small, .timeline .avatar { width: 32px; height: 32px; font-size: 1rem; flex: none; }
+
+/* Print Shop model rows: designer preview + print check */
+.model-pics { display: grid; gap: 6px; align-content: start; }
+.model-pics .thumb.ref img { background: #fff; }
+.check { font-size: 0.85rem; padding: 6px 10px; border-radius: 10px; background: #f3f7f2; }
+.check-hard { background: #fff6e0; }
+.check-no { background: #ffeceb; }
+.check .muted { font-size: 0.8rem; margin-top: 2px; }

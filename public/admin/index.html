@@ -1352,11 +1352,15 @@
       const say = (t) => { intake.set(tmp, t); if (state.tab === 'print' && printTab === 'models') renderPrintShop(false); };
       try {
         say(`Reading ${file.name}…`);
-        const { parseProject, slotsFrom, sizeOf, buildPreview } = await import('/shared/threemf.js');
+        const { parseProject, slotsFrom, sizeOf, buildPreview, printCheck } = await import('/shared/threemf.js');
         const proj = await parseProject(await file.arrayBuffer());
-        const slots = slotsFrom(proj);
-        if (slots.length > 5) throw new Error('More than 5 colors — the MMU3 has 5');
+        const slots = slotsFrom(proj).map((sl) => ({ ...sl, name: colorName(sl.hex) }));
+        if (slots.length > 5) throw new Error(`${file.name}: ${slots.length} colors — the MMU3 has 5. Merge some colors in the slicer first.`);
+        // Two slots with the same colour name? Number them so the queue stays clear.
+        const seenNames = {};
+        for (const sl of slots) { seenNames[sl.name] = (seenNames[sl.name] || 0) + 1; if (seenNames[sl.name] > 1) sl.name = `${sl.name} ${seenNames[sl.name]}`; }
         const size = sizeOf(proj);
+        const check = printCheck(proj);
         say('Making the tablet version…');
         const preview = await buildPreview(proj);
         say(`Uploading ${(file.size / 1048576).toFixed(1)} MB…`);
@@ -1365,7 +1369,13 @@
         say('Taking its picture…');
         const thumb = await renderThumb(preview.bytes.buffer, Object.fromEntries(slots.map((s) => [s.extruder, s.hex])));
         await adminApi(`/models/${model.id}/asset?kind=thumb`, { method: 'POST', body: thumb });
-        await adminApi(`/models/${model.id}`, { method: 'PATCH', body: { slots, size_mm: size, ...(proj.title ? { title: proj.title.replace(/[-_]+/g, ' ').replace(/\s+v?\d+(\.\d+)*$/i, '').slice(0, 60) } : {}) } });
+        if (proj.meta.refImage) {
+          await adminApi(`/models/${model.id}/asset?kind=ref`, { method: 'POST', body: new Blob([proj.meta.refImage], { type: 'image/png' }) });
+        }
+        await adminApi(`/models/${model.id}`, { method: 'PATCH', body: {
+          slots, size_mm: size, check, designer: proj.meta.designer, license: proj.meta.license,
+          ...(proj.title ? { title: cleanModelTitle(proj.title) } : {}),
+        } });
         intake.delete(tmp);
         toast(`${file.name} added — name the colors and set prices`);
       } catch (err) {
@@ -1385,6 +1395,45 @@
         await loadPrintShop();
         if (state.tab === 'print' && printTab === 'models') renderPrintShop(false);
       } catch (err) { toast(err.message, true); }
+    }
+
+    // "#120 Staryu (NO AMS) Pokemon Mini Figure" → "Staryu"
+    function cleanModelTitle(t) {
+      const out = t.replace(/[（(][^)）]*[)）]/g, ' ').replace(/#\s?\d+/g, ' ')
+        .replace(/\b(pok[eé]mon|multi[- ]?colou?r(ed)?|multi[- ]?parts?|no ams|ams|mini figure|figure|model|\w+ generation|flexi|articulated|print[- ]in[- ]place|\d+\s?colou?rs?|\d+\s?mm( tall)?|tall|v?\d+(\.\d+)+)\b/gi, ' ')
+        .replace(/[|/\\_-]+/g, ' ').replace(/\s+/g, ' ').trim();
+      return (out || t).slice(0, 60);
+    }
+    // Friendly name for a slot from its colour ("Navy", "Yellow"…) so the print queue reads well.
+    const NAMED = [['Black', '#1E1E1E'], ['White', '#F7F7F7'], ['Grey', '#9A9A9A'], ['Silver', '#C8C8C8'], ['Red', '#D8322A'], ['Dark red', '#8C1C1C'],
+      ['Pink', '#F48FB1'], ['Orange', '#F28C28'], ['Yellow', '#F7D02C'], ['Cream', '#F3E5C0'], ['Gold', '#D4A017'], ['Brown', '#6B3E1E'], ['Dark brown', '#3E2410'], ['Tan', '#C8A27A'],
+      ['Green', '#2E9B4A'], ['Lime', '#A6D94A'], ['Dark green', '#1F5A32'], ['Teal', '#1F9A9A'], ['Light blue', '#7EC8F0'], ['Blue', '#2F6FD8'], ['Navy', '#1C2B5A'],
+      ['Purple', '#7A4FC9'], ['Lavender', '#B9A3E6']];
+    // Nearest name by perceived colour (CIE Lab), so dark navy reads as Navy, not Black.
+    function toLab(hex) {
+      const lin = (v) => { v /= 255; return v > 0.04045 ? ((v + 0.055) / 1.055) ** 2.4 : v / 12.92; };
+      const [r, g, b] = [1, 3, 5].map((i) => lin(parseInt(hex.slice(i, i + 2), 16)));
+      const f = (t) => (t > 0.008856 ? Math.cbrt(t) : 7.787 * t + 16 / 116);
+      const x = f((r * 0.4124 + g * 0.3576 + b * 0.1805) / 0.95047); const y = f(r * 0.2126 + g * 0.7152 + b * 0.0722); const z = f((r * 0.0193 + g * 0.1192 + b * 0.9505) / 1.08883);
+      return [116 * y - 16, 500 * (x - y), 200 * (y - z)];
+    }
+    function colorName(hex) {
+      const [l, a2, b2] = toLab(hex);
+      let best = NAMED[0][0]; let bd = Infinity;
+      for (const [name, h] of NAMED) {
+        const [l2, a3, b3] = toLab(h);
+        const d = (l - l2) ** 2 * 0.6 + (a2 - a3) ** 2 + (b2 - b3) ** 2;
+        if (d < bd) { bd = d; best = name; }
+      }
+      return best;
+    }
+    const VERDICT = { good: ['✅', 'Easy in one go'], ok: ['👍', 'Doable'], hard: ['⚠️', 'Tough on the MMU3'], no: ['❌', 'Won’t work as is'] };
+    function checkHtml(c) {
+      if (!c) return '';
+      const [icon, label] = VERDICT[c.verdict] || VERDICT.ok;
+      const bits = [`${c.colors} color${c.colors === 1 ? '' : 's'}`, c.plates > 1 ? `${c.plates} plates` : '1 plate', `≈${c.swaps} swaps (≈${c.swapHours} h, ${c.purgeGrams} g purge)`];
+      if (c.designer?.hours) bits.push(`designer’s Bambu slice: ${c.designer.hours} h, ${c.designer.grams} g`);
+      return `<div class="check check-${esc(c.verdict)}" title="${esc(c.notes.join('; '))}"><strong>${icon} ${esc(label)}</strong> · ${esc(bits.join(' · '))}${c.notes.length ? `<div class="muted">${esc(c.notes.join(' · '))}</div>` : ''}</div>`;
     }
 
     async function renderThumb(buffer, colors) {
@@ -1415,8 +1464,11 @@
       const used = m.requests ? ` · ${m.requests} request${m.requests > 1 ? 's' : ''}` : '';
       return `
         <li class="model-row" data-id="${esc(m.id)}">
-          <button type="button" class="thumb checker" data-view ${m.preview ? '' : 'disabled'} aria-label="Spin ${esc(m.title)}" style="width:84px;height:84px">
-            ${m.thumb ? `<img src="${esc(m.thumb)}" alt="">` : '<span class="thumb-busy">…</span>'}</button>
+          <div class="model-pics">
+            <button type="button" class="thumb checker" data-view ${m.preview ? '' : 'disabled'} aria-label="Spin ${esc(m.title)}" style="width:84px;height:84px">
+              ${m.thumb ? `<img src="${esc(m.thumb)}" alt="">` : '<span class="thumb-busy">…</span>'}</button>
+            ${m.ref ? `<a class="thumb ref" href="${esc(m.ref)}" target="_blank" rel="noopener" title="The designer’s own preview — compare the colors" style="width:84px;height:84px"><img src="${esc(m.ref)}" alt="Designer preview"></a>` : ''}
+          </div>
           <div class="toy-row-main">
             <div class="row" style="gap:6px">
               <input class="grow compact" data-mf="title" value="${esc(m.title)}" maxlength="60" aria-label="Name">
@@ -1436,7 +1488,8 @@
               <label class="row" style="gap:6px">⭐ Mixed <input class="compact" type="number" min="0" max="999" data-mf="price_multi" value="${m.price_multi}" style="width:64px"></label>
               ${audienceChip(m.audience)}
             </div>
-            <div class="meta">${m.size_mm ? `${m.size_mm.join(' × ')} mm` : ''}${used}${m.file_name ? ` · ${esc(m.file_name)}` : ''}</div>
+            ${checkHtml(m.check)}
+            <div class="meta">${m.size_mm ? `${m.size_mm.join(' × ')} mm` : ''}${used}${m.designer ? ` · by ${esc(m.designer)}` : ''}${m.license ? ` · ${esc(m.license)}` : ''}${m.file_name ? ` · ${esc(m.file_name)}` : ''}</div>
             <div class="row" style="gap:6px">
               <a class="btn small" href="/api/admin/models/${esc(m.id)}/file">Download .3mf</a>
               <span style="flex:1"></span>
@@ -1455,7 +1508,7 @@
         ${noStock ? `<div class="card" style="border-color:#f0b429;background:#fff8e6"><strong>Add some filaments first.</strong> Kids pick colors from the in-stock filaments, so until there are some they can’t choose colors or spend stars. <button class="btn small" data-goto-fil>Go to Filaments</button></div>` : ''}
         <div class="card">
           <h2>Add a model</h2>
-          <p class="muted" style="margin:0 0 10px">Set it up in PrusaSlicer (colors on extruders 1–5), then <strong>File → Save Project As</strong> and upload the .3mf here. Use a computer — it does the heavy lifting once so tablets don’t have to.</p>
+          <p class="muted" style="margin:0 0 10px">Upload <strong>MakerWorld / Bambu Studio</strong> .3mf files as they come (colors and the designer’s preview are read from the file), or a PrusaSlicer project (<strong>File → Save Project As</strong>). You can pick several at once. Use a computer — it does the heavy lifting once so tablets don’t have to.</p>
           <label class="btn primary">Choose .3mf project<input type="file" id="model-file" accept=".3mf" multiple hidden></label>
           ${[...intake.values()].map((t) => `<p class="muted thumb-busy" style="margin:10px 0 0;font-size:0.9rem">${esc(t)}</p>`).join('')}
         </div>

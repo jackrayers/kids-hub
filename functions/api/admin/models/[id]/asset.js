@@ -1,4 +1,5 @@
-// POST /api/admin/models/:id/asset?kind=preview|thumb
+// POST /api/admin/models/:id/asset?kind=preview|thumb|ref
+//   ref:     image/png, webp or jpeg (the designer's own preview, from Bambu/MakerWorld files)
 //   preview: application/octet-stream (light mesh made in parent mode)
 //   thumb:   image/png or image/webp (transparent picture for the shelves)
 import { HttpError, json } from '../../../../../lib/http.js';
@@ -16,7 +17,10 @@ export async function onRequestPost({ request, env, params }) {
   } else if (kind === 'thumb') {
     if (!['image/png', 'image/webp'].includes(mime)) throw new HttpError(415, 'Thumbnail must be PNG or WebP');
     column = 'thumb_key';
-  } else throw new HttpError(400, 'kind must be preview or thumb');
+  } else if (kind === 'ref') {
+    if (!['image/png', 'image/webp', 'image/jpeg'].includes(mime)) throw new HttpError(415, 'Reference must be PNG, WebP or JPEG');
+    column = 'ref_key';
+  } else throw new HttpError(400, 'kind must be preview, thumb or ref');
   const bytes = await request.arrayBuffer();
   if (!bytes.byteLength || bytes.byteLength > 8 * 1024 * 1024) throw new HttpError(413, 'File is empty or larger than 8 MB');
   const key = await putImage(env, `models/${model.id}/${kind}`, bytes, mime);

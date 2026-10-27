@@ -1,6 +1,6 @@
 // Minimal service worker: makes the app installable and keeps the shell
 // available on flaky Wi-Fi. API calls always go to the network.
-const CACHE = 'kids-hub-v17';
+const CACHE = 'kids-hub-v18';
 const SHELL = ['/', '/pair/', '/shared/ui.css', '/shared/api.js', '/shared/whimsy.js', '/icons/icon.svg', '/manifest.webmanifest'];
 
 self.addEventListener('install', (event) => {
