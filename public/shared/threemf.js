@@ -235,7 +235,7 @@ async function parseBambu(files) {
     };
   }).filter((p) => p.plate);
 
-  const md = (name) => (xml.match(new RegExp(`<metadata name="${name}">([^<]*)</metadata>`))?.[1] || '').trim();
+  const md = (name) => unXml(xml.match(new RegExp(`<metadata name="${name}">([^<]*)</metadata>`))?.[1] || '').trim();
   const refName = ['Metadata/plate_1.png', 'Auxiliaries/.thumbnails/thumbnail_middle.png', 'Auxiliaries/.thumbnails/thumbnail_3mf.png'].find((n) => files[n]);
   return {
     title: md('Title'), positions, triangles, extruders, colours, printZ, plates,
@@ -324,7 +324,7 @@ async function parsePrusa(files) {
     for (let i = 0; i < o.ext.length; i++) E.push(o.ext[i]);
   }
   if (!T.length) throw new Error('No printable parts found in this project');
-  const title = (xml.match(/<metadata name="Title">([^<]*)<\/metadata>/)?.[1] || '').trim();
+  const title = unXml(xml.match(/<metadata name="Title">([^<]*)<\/metadata>/)?.[1] || '').trim();
   const positions = new Float32Array(P);
   const printZ = new Float32Array(positions.length / 3);
   for (let i = 0; i < printZ.length; i++) printZ[i] = positions[3 * i + 2];
@@ -467,4 +467,12 @@ export function printCheck({ triangles: T, extruders: E, printZ: Z, plates: PL, 
     height: Math.round(height), support, verdict, notes,
     designer: meta.slice?.length ? { hours: +meta.slice.reduce((s, p) => s + (p.hours || 0), 0).toFixed(1), grams: meta.slice.reduce((s, p) => s + (p.grams || 0), 0) } : null,
   };
+}
+
+// "Axolotl &amp; Keychain" → "Axolotl & Keychain"
+function unXml(s) {
+  return s.replace(/&(#x[0-9a-f]+|#\d+|amp|lt|gt|quot|apos);/gi, (m, e) => {
+    if (e[0] === '#') return String.fromCodePoint(e[1] === 'x' || e[1] === 'X' ? parseInt(e.slice(2), 16) : +e.slice(1));
+    return { amp: '&', lt: '<', gt: '>', quot: '"', apos: "'" }[e.toLowerCase()];
+  });
 }
